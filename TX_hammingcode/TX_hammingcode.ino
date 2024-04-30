@@ -1,3 +1,12 @@
+/*
+##############################################
+Author : Jeongcheol, Kim
+Company : The Catholic University of Korea
+Copyright : MIT License
+Description : RX Code for arduino VLC Project
+##############################################
+*/
+
 //HAMMING CODE APPLIED
 //AUTO-CORRECTION 1BIT ERROR
 

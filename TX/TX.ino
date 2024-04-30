@@ -1,3 +1,12 @@
+/*
+##############################################
+Author : Jeongcheol, Kim
+Company : The Catholic University of Korea
+Copyright : MIT License
+Description : RX Code for arduino VLC Project
+##############################################
+*/
+
 //LED OUTPUT DECLARE
 #define LED_PIN A2
 
