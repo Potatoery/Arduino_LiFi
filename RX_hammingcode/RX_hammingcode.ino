@@ -4,6 +4,7 @@ Author : Jeongcheol, Kim
 Company : The Catholic University of Korea
 Copyright : MIT License
 Description : RX Code for arduino VLC Project
+Changelog : hammingcode implemented 30/04/2024
 ##############################################
 */
 

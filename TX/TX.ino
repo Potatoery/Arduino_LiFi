@@ -3,7 +3,7 @@
 Author : Jeongcheol, Kim
 Company : The Catholic University of Korea
 Copyright : MIT License
-Description : RX Code for arduino VLC Project
+Description : TX Code for arduino VLC Project
 ##############################################
 */
 
