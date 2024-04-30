@@ -1,23 +1,51 @@
+//LED OUTPUT DECLARE
 #define LED_PIN A2
+
+//CLK LENGTH(ms)
 #define CLK 5
-#define LEN 500
+
+//inputString Length
+//!!!!!!!!!!!!!!!CAUTION!!!!!!!!!!!!!!!!!!
+//IT CONSUMES HUGE MEMORY SPACE
+#define LEN 100
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+//SYNCBYTE before transmission start
 #define SYNCBYTE 5
 
-char inputString[LEN] = "hello, its reliable test for very very very very very very very long menchester code";
-bool string_Signal[1000] = {0, };
-bool sending_value = 0;
-bool _symbol_EOT[8] = {0, 0, 0, 0, 0, 1, 0, 0};
-int stringIndex = 0;
-char buffer[100]; //for debug
+//clk boolean
 bool clk = 0;
 
-//FOR BENCHMARKING
-unsigned long _time_started;
-unsigned long _time_ended;
+//inputString Setup
+char inputString[LEN] = "hello, its reliable test for very very very very very very very long menchester code";
+
+//128BYTE BOOLEAN-ARRAY to store binary text data
+bool string_Signal[1024] = {0, }; 
+
+//sending_value (will updated by xor with clk & data)
+bool sending_value = 0;
+
+//for sending loop
+int stringIndex = 0;
+
+//symbol of start of transmission
+//NOT USING FOR NOW
+bool _symbol_SOT[8] = {0, 0, 0, 0, 0, 1, 1, 0};
+
+//symbol of end of transmission
+bool _symbol_EOT[8] = {0, 0, 0, 0, 0, 1, 0, 0};
+
+//FOR BENCHMARKING=============================
+// unsigned long _time_started;
+// unsigned long _time_ended;
+// char buffer[100];
+//FOR BENCHMARKING=============================
 
 void setup() {
-  // put your setup code here, to run once:
-  Serial.begin(115200);
+  //FOR BENCHMARKING===========================
+  // Serial has been disabled since serial comm causes unknown delay
+  // Serial.begin(115200);
+  //FOR BENCHMARKING===========================
   pinMode(LED_PIN, OUTPUT);
     for (int i = 0; i < strlen(inputString) + SYNCBYTE + 1; i++) {
       if(i < SYNCBYTE){
@@ -34,36 +62,34 @@ void setup() {
         }
       }
     }
-    // sprintf(buffer, "%b",(string_Signal));
-    // Serial.print(buffer + "\n");
-    Serial.print("start TRANSMISSION \n");
+    //FOR BENCHMARKING===========================
+    // Serial.print("start TRANSMISSION \n");
+    //FOR BENCHMARKING===========================
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
   clk = !clk;
   sending_value = clk ^ string_Signal[stringIndex];
   digitalWrite(LED_PIN, sending_value);
-  sprintf(buffer, "%d",(sending_value));
-  printf(buffer);
   delay(CLK/2);
   clk = !clk;
   sending_value = clk ^ string_Signal[stringIndex];
   digitalWrite(LED_PIN, sending_value);
-  sprintf(buffer, "%d",(sending_value));
-  printf(buffer);
   delay(CLK/2);
   stringIndex += 1;
-  // Serial.print("transmitting \n");
   if(stringIndex == (strlen(inputString) + SYNCBYTE + 1) * 8) {
       stringIndex = 0;
-      _time_ended = millis();
-      Serial.print("\n");
-      Serial.print((strlen(inputString) + SYNCBYTE + 1) * 8);
-      Serial.print("\n");
-      Serial.print(String((_time_ended) - (_time_started)));
+      //FOR BENCHMARKING===========================
+      // _time_ended = millis();
+      // Serial.print("\n");
+      // Serial.print((strlen(inputString) + SYNCBYTE + 1) * 8);
+      // Serial.print("\n");
+      // Serial.print(String((_time_ended) - (_time_started)));
+      //FOR BENCHMARKING===========================
       delay(10);
-      _time_started = millis();
+      //FOR BENCHMARKING===========================
+      // _time_started = millis();
+      //FOR BENCHMARKING===========================
   }
-  digitalWrite(LED_PIN, 0);
+  // digitalWrite(LED_PIN, 0);
 }
