@@ -1,6 +1,17 @@
+/*
+##############################################
+Author : Jeongcheol, Kim
+Company : The Catholic University of Korea
+Copyright : MIT License
+Description : RX Code for arduino VLC Project
+Note : Frequency Modulation code
+##############################################
+*/
+
 #define LDR A2
-#define THRESHOLD 50
-#define SAMPLING_PERIOD 6 //us
+#define DURATION 6
+#define THRESHOLD 80
+#define SAMPLING_PERIOD 10 //us
 
 // Define various ADC prescaler 
 const unsigned char PS_16 = (1 << ADPS2); 
@@ -26,7 +37,11 @@ int voltage;
 
 //for IDEA Develop
 int8_t duration = 0;
+int8_t bitIndex = 0;
+char ret = 0;
 int temp;
+
+String string_buffer = "";
 
 void setup() {
   // put your setup code here, to run once:
@@ -34,6 +49,7 @@ void setup() {
   pinMode(LDR, INPUT);
   ADCSRA &= ~PS_128;
   ADCSRA |= PS_16;
+  Serial.print(String("Started")+"\n");
 }
 
 void loop() {
@@ -50,8 +66,10 @@ void loop() {
       }
       first_10 = 0;
       duration += 1;
-      if(duration > 5){
+      if(duration > DURATION){
         Serial.print(String(voltage) + " / " +String(current_period)+" = 10"+"\n");
+        ret_update(1);
+        ret_update(0);
         duration = 0;
         first_10 = 1;
       }
@@ -65,8 +83,10 @@ void loop() {
       }
       first_11 = 0;
       duration += 1;
-      if(duration > 5){
+      if(duration > DURATION){
         Serial.print(String(voltage) + " / " +String(current_period)+" = 11"+"\n");
+        ret_update(1);
+        ret_update(1);
         duration = 0;
         first_11 = 1;
       }
@@ -80,8 +100,10 @@ void loop() {
       }
       first_01 = 0;
       duration += 1;
-      if(duration > 5){
+      if(duration > DURATION){
         Serial.print(String(voltage) + " / " +String(current_period)+" = 01"+"\n");
+        ret_update(0);
+        ret_update(1);
         duration = 0;
         first_01 = 1;
       }
@@ -95,8 +117,10 @@ void loop() {
       }
       first_00 = 0;
       duration += 1;
-      if(duration > 5){
+      if(duration > DURATION){
         Serial.print(String(voltage) + " / " +String(current_period)+" = 00"+"\n");
+        ret_update(0);
+        ret_update(0);
         duration = 0;
         first_00 = 1;
       }
@@ -115,4 +139,24 @@ bool get_ldr() {
 
 int get_period(){
   return (current_time-last_time);
+}
+
+void ret_update(bool temp){
+  // Serial.print(String(voltage) + " / " +String(current_period)+" "+ string_buffer +"\n");
+  ret = ret | temp << 7-bitIndex;
+  bitIndex += 1;
+  if(bitIndex == 8){
+    if((ret < 31) | (ret > 127)){
+      ret = 0;
+      Serial.print("Comm ended or Sync failure");
+    } else if(ret==4){
+      ret = 0;
+      Serial.print("END OF TRANSMISSION");
+    } else {
+      Serial.print(String(voltage) + " / " +String(current_period)+" "+ string_buffer +"\n");
+      string_buffer += ret;
+      bitIndex = 0;
+      ret = 0;
+    }
+  }
 }
