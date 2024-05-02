@@ -8,6 +8,8 @@ Note : Frequency Modulation code
 ##############################################
 */
 
+#include "digitalWriteFast.h"
+
 //LED OUTPUT DECLARE
 #define LED A2
 
