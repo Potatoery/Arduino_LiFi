@@ -13,8 +13,17 @@ Note : Frequency Modulation code
 //LED OUTPUT DECLARE
 #define LED A2
 
-//Stand-by before transmission start
-#define STANDBY 5 //ms
+//Frequency Settings
+#define FREQ00 250
+#define FREQ01 750
+#define FREQ11 1250
+#define FREQ10 1750
+
+//SYNCBYTE before transmission start
+#define SYNCBYTE 5 //ms
+
+//Duration of certain Frequency
+#define DURATION 1 //CYCLE
 
 //inputString Length
 //!!!!!!!!!!!!!!!CAUTION!!!!!!!!!!!!!!!!!!
@@ -30,6 +39,7 @@ bool string_Signal[1024] = {0, };
 
 //for sending loop
 int stringIndex = 0;
+bool toggle = 0;
 
 // Define various ADC prescaler 
 const unsigned char PS_16 = (1 << ADPS2); 
@@ -51,19 +61,24 @@ bool _symbol_EOT[8] = {0, 0, 0, 0, 0, 1, 0, 0};
 //FOR BENCHMARKING=============================
 
 void setup() {
-  pinMode(LED, OUTPUT);
-  for (int i = 0; i < strlen(inputString) + STANDBY + 1; i++) {
-    if(i < STANDBY){
+  pinModeFast(LED, OUTPUT);
+  for (int i = 0; i < strlen(inputString) + SYNCBYTE + 1; i++) {
+    if(i == SYNCBYTE - 1){
+      for (int j = 0; j < 8; j++) {
+          string_Signal[8*i + 7-j] = _symbol_SOT[7 - j];
+      }
+    }
+    else if(i < SYNCBYTE - 1){
       for (int j = 0; j < 8; j++) {
           string_Signal[8*i + 7-j] = (1);
       }
-    } else if(i == (strlen(inputString) + STANDBY)) {
+    } else if(i == (strlen(inputString) + SYNCBYTE)) {
       for (int j = 0; j < 8; j++) {
           string_Signal[8*i + 7-j] = _symbol_EOT[7 - j];
       }
     } else {
       for (int j = 0; j < 8; j++){
-          string_Signal[8*i + 7-j] = ((inputString[i - STANDBY] & (0x01 << j)) != 0);
+          string_Signal[8*i + 7-j] = ((inputString[i - SYNCBYTE] & (0x01 << j)) != 0);
       }
     }
   }
@@ -73,12 +88,12 @@ void setup() {
   //For Debuging=========================================
   ADCSRA &= ~PS_128;
   ADCSRA |= PS_16;
-  digitalWrite(LED, 1);
-  delay(STANDBY);
+  digitalWriteFast(LED, 1);
+  delay(SYNCBYTE);
 }
 
 void loop() {
-  digitalWrite(LED, 0);
+  digitalWriteFast(LED, 0);
   if(string_Signal[stringIndex]){
     if(string_Signal[stringIndex+1]){
       write_11();
@@ -93,12 +108,12 @@ void loop() {
     }
   }
   stringIndex += 2;
-  if(stringIndex >= (strlen(inputString) + STANDBY + 1) * 8) {
+  if(stringIndex >= (strlen(inputString) + SYNCBYTE + 1) * 8) {
       stringIndex = 0;
       //FOR BENCHMARKING===========================
       // _time_ended = millis();
       // Serial.print("\n");
-      // Serial.print((strlen(inputString) + STANDBY + 1) * 8);
+      // Serial.print((strlen(inputString) + SYNCBYTE + 1) * 8);
       // Serial.print("\n");
       // Serial.print(String((_time_ended) - (_time_started)));
       //FOR BENCHMARKING===========================
@@ -110,37 +125,33 @@ void loop() {
 }
 
 void write_00(){
-  for(int i = 0; i < 4; i++){
-    digitalWrite(LED, 1);
-    delayMicroseconds(350);
-    digitalWrite(LED, 0);
-    delayMicroseconds(350);
+  for(int i = 0; i < DURATION; i++){
+    delayMicroseconds(FREQ00);
+    digitalWriteFast(LED, toggle);
+    toggle = !toggle;
   }
 }
 
 void write_01(){
-  for(int i = 0; i < 4; i++){
-    digitalWrite(LED, 1);
-    delayMicroseconds(600);
-    digitalWrite(LED, 0);
-    delayMicroseconds(600);
+  for(int i = 0; i < DURATION; i++){
+    delayMicroseconds(FREQ01);
+    digitalWriteFast(LED, toggle);
+    toggle = !toggle;
   }
 }
 
 void write_10(){
-  for(int i = 0; i < 4; i++){
-    digitalWrite(LED, 1);
-    delayMicroseconds(850);
-    digitalWrite(LED, 0);
-    delayMicroseconds(850);
+  for(int i = 0; i < DURATION; i++){
+    delayMicroseconds(FREQ10);
+    digitalWriteFast(LED, toggle);
+    toggle = !toggle;
   }
 }
 
 void write_11(){
-  for(int i = 0; i < 4; i++){
-    digitalWrite(LED, 1);
-    delayMicroseconds(1100);
-    digitalWrite(LED, 0);
-    delayMicroseconds(1100);
+  for(int i = 0; i < DURATION; i++){
+    delayMicroseconds(FREQ11);
+    digitalWriteFast(LED, toggle);
+    toggle = !toggle;
   }
 }
