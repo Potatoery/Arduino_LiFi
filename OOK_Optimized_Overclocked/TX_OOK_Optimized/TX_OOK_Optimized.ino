@@ -26,7 +26,7 @@ Description : TX Code for arduino VLC Project
 bool clk = 0;
 
 //inputString Setup
-char inputString[LEN] = "hello, its reliable test for very very very very very very very long menchester code";
+const char PROGMEM inputString[LEN] = "hello, its reliable test for very very very very very very very long menchester code";
 
 //128BYTE BOOLEAN-ARRAY to store binary text data
 bool string_Signal[1024] = {0, }; 

@@ -10,6 +10,14 @@ Description : RX Code for arduino VLC Project
 //need DEBUG?
 #define debug 1
 
+// Define various ADC prescaler 
+// For Fast sampling rate
+// kind of ADC overclock
+const unsigned char PS_16 = (1 << ADPS2); 
+const unsigned char PS_32 = (1 << ADPS2) | (1 << ADPS0); 
+const unsigned char PS_64 = (1 << ADPS2) | (1 << ADPS1); 
+const unsigned char PS_128 = (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);
+
 //Photodiode Input declare
 #define LDR_PIN A2
 
@@ -17,7 +25,7 @@ Description : RX Code for arduino VLC Project
 // #define LEN 50
 
 //CLK length(ms)
-#define CLK 5 //can't be reduced more than 5
+#define CLK 2
 
 //Threshold(will be replaced with LPF of input)
 #define THRESHOLD 60
@@ -44,13 +52,14 @@ bool synced = 0;
 
 //received letter
 char ret = 0;
+char buffer = 0;
 
 //for receiving loop
 int bitIndex = 0;
 
 //for menchester code self clocking
 int clk_half = CLK * 0.5;
-int clk_quarter = CLK * 0.25;
+float clk_quarter = CLK * 0.25;
 
 //how many bit has been synced
 int syncCycle = 0;
@@ -61,6 +70,8 @@ String string_buffer = "";
 void setup() {
   //MAXIMUM SERIAL SPEED IS RECOMMENDED
   //SLOW SERIAL COMM CAUSES ERROR
+  ADCSRA &= ~PS_128;
+  ADCSRA |= PS_16;
   Serial.begin(921600);
   Serial.println("started");
 }
@@ -85,7 +96,7 @@ void loop() {
       }else{
         syncCycle = 0;
         //delay for compensate timing incorrection
-        delay(clk_quarter);
+        delayMicroseconds(int(clk_quarter*1000));
         previous_state = get_ldr();  
       }
       if(syncCycle > SYNC_LENGTH){
@@ -94,32 +105,39 @@ void loop() {
     //IS IT REALLY SYNCED======================================================
     }else{
     //WHEN IT SYNCED===========================================================
-      if(current_state == 0){
-        state = 1;
-      }
-      Serial.print(String(analogRead(LDR_PIN)) + " " + String(current_state) + String(previous_state) + " || " + state + " " + "RECEIVING BITS || " + string_buffer + "\n");
-      delay(clk_half);
-      previous_state = get_ldr(); 
-      if(state == 1){
+      delayMicroseconds((clk_half + 0.2)*1000);
+      previous_state = get_ldr();
+      if(state = 0){
+        buffer = buffer << 1;
+        buffer = buffer | current_state;
+        if (buffer == 6) {
+          state = 1;
+          ret = 0;
+        }
+      }else{
         ret = ret | current_state << 7-bitIndex;
         bitIndex += 1;
           if(bitIndex == 8){
             if((ret < 31) | (ret > 127)){
               state = 0;
               ret = 0;
+              buffer = 0;
               synced = 0;
               syncCycle = 0;
               Serial.print("Comm ended or Sync failure");
             } else if(ret==4){
               state = 0;
               ret = 0;
+              buffer = 0;
               synced = 0;
               syncCycle = 0;
+              string_buffer = "";
               Serial.print("END OF TRANSMISSION");
             } else {
               string_buffer += ret;
               bitIndex = 0;
               ret = 0;
+              Serial.print(String(analogRead(LDR_PIN)) + " " + String(current_state) + String(previous_state) + " || " + state + " " + "RECEIVING BITS || " + string_buffer + "\n");
             }
           }
       }
@@ -134,6 +152,8 @@ void loop() {
   //Arduino ref says under 3~6 microsec delay is not guarenteed
   delayMicroseconds(6);
   }
+
+  
 }
 
 bool get_ldr() {

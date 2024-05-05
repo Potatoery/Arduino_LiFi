@@ -9,13 +9,13 @@ Note : Frequency Modulation code
 */
 
 //need DEBUG?
-#define debug 1
+bool debug = 0;
 
 //Photodiode
 #define PD A2
 
 //PD THRESHOLD
-#define THRESHOLD 50
+#define THRESHOLD 150
 
 //Sampling Period
 #define SAMPLING_PERIOD 10 //us
@@ -25,9 +25,6 @@ Note : Frequency Modulation code
 #define FREQ01 750
 #define FREQ11 1250
 #define FREQ10 1750
-
-//for find threshold //FOR DEBUG
-float suggestion_temp = 0;
 
 //Frequency boundaries
 int boundary = 250;
@@ -81,13 +78,9 @@ void loop() {
     get_binary();
     //now update last_time to current_time
     last_time = current_time;
-    if(debug){
-    Serial.print(String(voltage) + " / " +String(current_period)+" !! "+"\n");
-    }
   }
   if(debug){
-      Serial.println(String(voltage) + " || Suggesting threshold is, " + String(get_ma()));
-      delay(15);
+    Serial.print(String(voltage) + " / " +String(current_period)+" !! "+"\n");
   }
   //For sampling
   previous_state = current_state;
@@ -101,36 +94,26 @@ bool get_pd() {
 
 void get_binary(){
   if((current_period < FREQ10 + boundary)&&(current_period > FREQ10 - boundary)){
-      if(debug){
-        Serial.print(String(voltage) + " / " +String(current_period)+" = 10"+"\n");
-      }
+      Serial.print(String(voltage) + " / " +String(current_period)+" = 10"+"\n");
       ret_update(1);
       ret_update(0);
     }
     else if((current_period < FREQ11 + boundary)&&(current_period > FREQ11 - boundary)){
-      if(debug){
-        Serial.print(String(voltage) + " / " +String(current_period)+" = 11"+"\n");
-      }
+      Serial.print(String(voltage) + " / " +String(current_period)+" = 11"+"\n");
       ret_update(1);
       ret_update(1);
     }
     else if((current_period < FREQ01 + boundary)&&(current_period > FREQ01 - boundary)){
-      if(debug){
-        Serial.print(String(voltage) + " / " +String(current_period)+" = 01"+"\n");
-      }
+      Serial.print(String(voltage) + " / " +String(current_period)+" = 01"+"\n");
       ret_update(0);
       ret_update(1);
     }
     else if((current_period < FREQ00 + boundary)&&(current_period > FREQ00 - boundary)){
-      if(debug){
-        Serial.print(String(voltage) + " / " +String(current_period)+" = 00"+"\n");
-      }
+      Serial.print(String(voltage) + " / " +String(current_period)+" = 00"+"\n");
       ret_update(0);
       ret_update(0);
     }else{
-      if(debug){
-        Serial.print(String(voltage) + " / " +String(current_period)+" = TIMEOUT"+"\n");
-      }
+      Serial.print(String(voltage) + " / " +String(current_period)+" = TIMEOUT"+"\n");
     }
 }
 
@@ -169,10 +152,4 @@ void ret_update(bool temp){
       }
     }
   }
-}
-
-int get_ma(){
-  suggestion_temp = suggestion_temp * 0.98;
-  suggestion_temp += voltage * 0.02;
-  return suggestion_temp;
 }

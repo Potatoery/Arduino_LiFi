@@ -26,7 +26,8 @@ Description : TX Code for arduino VLC Project
 bool clk = 0;
 
 //inputString Setup
-char inputString[LEN] = "hello, its reliable test for very very very very very very very long menchester code";
+//about ~100 characters can be handled
+const char PROGMEM inputString[LEN] = "hello, its reliable test for very very very very very very very long menchester code";
 
 //128BYTE BOOLEAN-ARRAY to store binary text data
 bool string_Signal[1024] = {0, }; 
@@ -39,10 +40,10 @@ int stringIndex = 0;
 
 //symbol of start of transmission
 //NOT USING FOR NOW
-bool _symbol_SOT[8] = {0, 0, 0, 0, 0, 1, 1, 0};
+const bool PROGMEM _symbol_SOT[8] = {0, 0, 0, 0, 0, 1, 1, 0};
 
 //symbol of end of transmission
-bool _symbol_EOT[8] = {0, 0, 0, 0, 0, 1, 0, 0};
+const bool PROGMEM _symbol_EOT[8] = {0, 0, 0, 0, 0, 1, 0, 0};
 
 //FOR BENCHMARKING=============================
 // unsigned long _time_started;

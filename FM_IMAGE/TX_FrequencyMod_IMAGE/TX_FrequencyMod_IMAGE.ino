@@ -9,6 +9,8 @@ Note : Frequency Modulation code
 */
 
 #include "digitalWriteFast.h"
+#include <SD.h>
+#include <SPI.h>
 
 //NEED DEBUG?
 bool debug = 0;
@@ -41,6 +43,9 @@ const char PROGMEM inputString[LEN] = "hello, its reliable test for very very ve
 //128BYTE BOOLEAN-ARRAY to store binary text data
 bool string_Signal[1024] = {0, }; 
 
+//Photo Tests
+uint8_t bmp[128][128] = {{0, }, };
+
 //for sending loop
 int stringIndex = 0;
 bool toggle = 0;
@@ -53,10 +58,10 @@ const unsigned char PS_128 = (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);
 
 //symbol of start of transmission
 //NOT USING FOR NOW
-bool _symbol_SOT[8] = {0, 0, 0, 0, 0, 1, 1, 0};
+const bool PROGMEM _symbol_SOT[8] = {0, 0, 0, 0, 0, 1, 1, 0};
 
 //symbol of end of transmission
-bool _symbol_EOT[8] = {0, 0, 0, 0, 0, 1, 0, 0};
+const bool PROGMEM _symbol_EOT[8] = {0, 0, 0, 0, 0, 1, 0, 0};
 
 //FOR BENCHMARKING=============================
 // unsigned long _time_started;
@@ -92,10 +97,41 @@ void setup() {
     Serial.print("start TRANSMISSION \n");
   }
   //For Debuging=========================================
+  if(!SD.begin(53)){
+    Serial.print("Check SD Card.. failed.");
+    while(1);
+  }
   ADCSRA &= ~PS_128;
   ADCSRA |= PS_16;
+  File bmpImage = SD.open("image.bmp", FILE_READ);
+  int32_t dataOffset = readNbytesInt(&bmpImage, 0x0A, 4);
+  int32_t width = readNbytesInt(&bmpImage, 0x12, 4); //should be 128 do not exceed it
+  int32_t height = readNbytesInt(&bmpImage, 0x16, 4); //should be 128 do not exceed it
+  int pixelsize = readNbytesInt(&bmpImage, 0x1C, 2);
+  if(width != 128){
+    Serial.print("Check width");
+    while(1);
+  }
+  if(height != 128){
+    Serial.print("Check height");
+    while(1);
+  }
+  if(pixelsize != 8){
+    Serial.print("Check pixelsize");
+    while(1);
+  }
+  bmpImage.seek(dataOffset);
+
+  byte data;
+
+  for(int i = 0; i < height; i ++) {
+    for (int j = 0; j < width; j ++) {
+      bmp[height-1-i][j] = bmpImage.read();
+    }
+  }
+  bmpImage.close();
   digitalWriteFast(LED, 1);
-  delay(SYNCBYTE);
+  delay(SYNCBYTE*8);
 }
 
 void loop() {
@@ -127,6 +163,24 @@ void loop() {
       // _time_started = millis();
       //FOR BENCHMARKING===========================
   }
+}
+
+int32_t readNbytesInt(File *filename, int position, byte nBytes) {
+    if (nBytes > 4)
+        //int32_t can't exceed 4bytes
+        return 0;
+
+    filename->seek(position);
+
+    int32_t weight = 0;
+    int32_t result = 0;
+
+    for (; nBytes; nBytes--)
+    {
+        result += weight ^ filename->read();
+        weight <<= 8;
+    }
+    return result;
 }
 
 void write_00(){
