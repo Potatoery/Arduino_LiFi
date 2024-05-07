@@ -17,10 +17,10 @@ bool debug = 0;
 #define LED A2
 
 //Frequency Settings
-#define FREQ00 250
-#define FREQ01 750
-#define FREQ11 1250
-#define FREQ10 1750
+#define FREQ00 750
+#define FREQ01 1250
+#define FREQ11 1750
+#define FREQ10 2250
 
 //SYNCBYTE before transmission start
 //Minimum 2 ( SOT should be included, Buffer should be flushed at RX )
@@ -122,7 +122,7 @@ void loop() {
       // Serial.print("\n");
       // Serial.print(String((_time_ended) - (_time_started)));
       //FOR BENCHMARKING===========================
-      delay(10);
+      delay(100);
       //FOR BENCHMARKING===========================
       // _time_started = millis();
       //FOR BENCHMARKING===========================

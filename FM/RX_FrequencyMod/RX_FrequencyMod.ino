@@ -9,22 +9,22 @@ Note : Frequency Modulation code
 */
 
 //need DEBUG?
-#define debug 1
+#define debug 0
 
 //Photodiode
 #define PD A2
 
 //PD THRESHOLD
-#define THRESHOLD 50
+#define THRESHOLD 55
 
 //Sampling Period
 #define SAMPLING_PERIOD 10 //us
 
 //Frequency Settings
-#define FREQ00 250
-#define FREQ01 750
-#define FREQ11 1250
-#define FREQ10 1750
+#define FREQ00 750
+#define FREQ01 1250
+#define FREQ11 1750
+#define FREQ10 2250
 
 //for find threshold //FOR DEBUG
 float suggestion_temp = 0;
@@ -82,13 +82,13 @@ void loop() {
     //now update last_time to current_time
     last_time = current_time;
     if(debug){
-    Serial.print(String(voltage) + " / " +String(current_period)+" !! "+"\n");
+      Serial.print(String(voltage) + " / " +String(current_period)+" !! "+"\n");
     }
   }
-  if(debug){
-      Serial.println(String(voltage) + " || Suggesting threshold is, " + String(get_ma()));
-      delay(15);
-  }
+  // if(debug){
+  //     Serial.println(String(voltage) + " || Suggesting threshold is, " + String(get_ma()));
+  //     delay(15);
+  // }
   //For sampling
   previous_state = current_state;
   delayMicroseconds(SAMPLING_PERIOD);
@@ -139,7 +139,7 @@ int get_period(){
 }
 
 void ret_update(bool temp){
-  Serial.print(String(voltage) + " / " +String(current_period)+" "+ string_buffer +"\n");
+  //Serial.print(String(voltage) + " / " +String(current_period)+" "+ string_buffer +"\n");
   if(state = 0){
     buffer = buffer << 1;
     buffer = buffer | temp;
@@ -155,12 +155,12 @@ void ret_update(bool temp){
         ret = 0;
         state = 0;
         buffer = 0;
-        Serial.print("END OF TRANSMISSION");
+        Serial.println("END OF TRANSMISSION");
       } else if((ret < 31) | (ret > 127)){
         ret = 0;
         state = 0;
         buffer = 0;
-        Serial.print("Comm ended or Wrong bytes");
+        Serial.println("Comm ended or Wrong bytes");
       } else {
         Serial.print(String(voltage) + " / " +String(current_period)+" = "+ string_buffer +"\n");
         string_buffer += ret;

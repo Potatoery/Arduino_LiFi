@@ -26,7 +26,7 @@ Description : TX Code for arduino VLC Project
 bool clk = 0;
 
 //inputString Setup
-const char PROGMEM inputString[LEN] = "hello, its reliable test for very very very very very very very long menchester code";
+const char inputString[LEN] = "hello, its reliable test for very very very very very very very long menchester code";
 
 //128BYTE BOOLEAN-ARRAY to store binary text data
 bool string_Signal[1024] = {0, }; 
@@ -57,7 +57,12 @@ void setup() {
   //FOR BENCHMARKING===========================
   pinMode(LED_PIN, OUTPUT);
     for (int i = 0; i < strlen(inputString) + SYNCBYTE + 1; i++) {
-      if(i < SYNCBYTE){
+      if(i == SYNCBYTE - 1){
+        for (int j = 0; j < 8; j++) {
+            string_Signal[8*i + 7-j] = _symbol_SOT[7 - j];
+        }
+      }
+      else if(i < SYNCBYTE - 1){
         for (int j = 0; j < 8; j++) {
             string_Signal[8*i + 7-j] = (1);
         }
@@ -70,7 +75,7 @@ void setup() {
             string_Signal[8*i + 7-j] = ((inputString[i - SYNCBYTE] & (0x01 << j)) != 0);
         }
       }
-    }
+  }
     //FOR BENCHMARKING===========================
     // Serial.print("start TRANSMISSION \n");
     //FOR BENCHMARKING===========================
@@ -80,11 +85,11 @@ void loop() {
   clk = !clk;
   sending_value = clk ^ string_Signal[stringIndex];
   digitalWrite(LED_PIN, sending_value);
-  delayMicroseconds(CLK/2);
+  delayMicroseconds(CLK/2 *1000);
   clk = !clk;
   sending_value = clk ^ string_Signal[stringIndex];
   digitalWrite(LED_PIN, sending_value);
-  delayMicroseconds(CLK/2);
+  delayMicroseconds(CLK/2 * 1000);
   stringIndex += 1;
   if(stringIndex == (strlen(inputString) + SYNCBYTE + 1) * 8) {
       stringIndex = 0;

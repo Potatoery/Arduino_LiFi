@@ -8,7 +8,7 @@ Description : RX Code for arduino VLC Project
 */
 
 //need DEBUG?
-#define debug 1
+#define debug 0
 
 // Define various ADC prescaler 
 // For Fast sampling rate
@@ -28,7 +28,7 @@ const unsigned char PS_128 = (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);
 #define CLK 2
 
 //Threshold(will be replaced with LPF of input)
-#define THRESHOLD 60
+#define THRESHOLD 550
 
 //How many bit to be synced
 #define SYNC_LENGTH 4
@@ -58,7 +58,7 @@ char buffer = 0;
 int bitIndex = 0;
 
 //for menchester code self clocking
-int clk_half = CLK * 0.5;
+float clk_half = CLK * 0.5;
 float clk_quarter = CLK * 0.25;
 
 //how many bit has been synced
@@ -91,12 +91,12 @@ void loop() {
       Serial.print(String(analogRead(LDR_PIN)) + " " + String(current_state) + String(previous_state) + " || " + state + " " + "SYNCING SYSTEM || " + string_buffer + "\n");
       if(current_state == 1){
         syncCycle += 1;
-        delay(clk_half);
+        delayMicroseconds(int(clk_half*1000)+100);
         previous_state = get_ldr();
       }else{
         syncCycle = 0;
         //delay for compensate timing incorrection
-        delayMicroseconds(int(clk_quarter*1000));
+        delayMicroseconds(int(clk_quarter*1000)+100);
         previous_state = get_ldr();  
       }
       if(syncCycle > SYNC_LENGTH){
@@ -105,39 +105,45 @@ void loop() {
     //IS IT REALLY SYNCED======================================================
     }else{
     //WHEN IT SYNCED===========================================================
-      delayMicroseconds((clk_half + 0.2)*1000);
+      delayMicroseconds((clk_half)*1000 + 150);
       previous_state = get_ldr();
-      if(state = 0){
+      if(state == 0){
         buffer = buffer << 1;
         buffer = buffer | current_state;
-        if (buffer == 6) {
+        if (buffer == 0x06) {
           state = 1;
           ret = 0;
+          buffer = 0;
+          Serial.println("START OF TRANSMISSION");
         }
       }else{
         ret = ret | current_state << 7-bitIndex;
         bitIndex += 1;
           if(bitIndex == 8){
-            if((ret < 31) | (ret > 127)){
+            if(ret==4){
               state = 0;
               ret = 0;
-              buffer = 0;
               synced = 0;
-              syncCycle = 0;
-              Serial.print("Comm ended or Sync failure");
-            } else if(ret==4){
-              state = 0;
-              ret = 0;
-              buffer = 0;
-              synced = 0;
+              bitIndex = 0;
               syncCycle = 0;
               string_buffer = "";
-              Serial.print("END OF TRANSMISSION");
+              Serial.println("END OF TRANSMISSION");
+            } else if((ret < 31) | (ret > 127)){
+              if(ret == 0xFF){
+                ret = 0;
+              }else{
+                state = 0;
+                ret = 0;
+                bitIndex = 0;
+                synced = 0;
+                syncCycle = 0;
+                Serial.print("Comm ended or Sync failure");
+              }
             } else {
               string_buffer += ret;
               bitIndex = 0;
               ret = 0;
-              Serial.print(String(analogRead(LDR_PIN)) + " " + String(current_state) + String(previous_state) + " || " + state + " " + "RECEIVING BITS || " + string_buffer + "\n");
+              Serial.print(String(voltage) + " " + String(current_state) + String(previous_state) + " || " + state + " " + "RECEIVING BITS || " + string_buffer + "\n");
             }
           }
       }
@@ -158,7 +164,7 @@ void loop() {
 
 bool get_ldr() {
   voltage = analogRead(LDR_PIN);
-  return voltage > THRESHOLD ? true : false;
+  return voltage > THRESHOLD ? false : true;
 }
 
 int get_ma(){

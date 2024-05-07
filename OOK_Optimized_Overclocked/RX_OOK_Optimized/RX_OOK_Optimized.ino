@@ -25,7 +25,7 @@ const unsigned char PS_128 = (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);
 #define CLK 2
 
 //Threshold(will be replaced with LPF of input)
-#define THRESHOLD 60
+#define THRESHOLD 55
 
 //How many bit to be synced
 #define SYNC_LENGTH 4
@@ -81,7 +81,7 @@ void loop() {
       Serial.print(String(analogRead(LDR_PIN)) + " " + String(current_state) + String(previous_state) + " || " + state + " " + "SYNCING SYSTEM || " + string_buffer + "\n");
       if(current_state == 1){
         syncCycle += 1;
-        delay(clk_half);
+        delayMicroseconds(int((clk_half+0.2)*1000));
         previous_state = get_ldr();
       }else{
         syncCycle = 0;
@@ -98,25 +98,24 @@ void loop() {
       if(current_state == 0){
         state = 1;
       }
-      
-      delayMicroseconds((clk_half + 0.2)*1000);
+      delayMicroseconds((clk_half)*1000 + 170);
       previous_state = get_ldr(); 
       if(state == 1){
         ret = ret | current_state << 7-bitIndex;
         bitIndex += 1;
           if(bitIndex == 8){
-            if((ret < 31) | (ret > 127)){
-              state = 0;
-              ret = 0;
-              synced = 0;
-              syncCycle = 0;
-              Serial.print("Comm ended or Sync failure");
-            } else if(ret==4){
+            if(ret==4){
               state = 0;
               ret = 0;
               synced = 0;
               syncCycle = 0;
               Serial.print("END OF TRANSMISSION");
+            }else if((ret < 31) | (ret > 127)){
+              state = 0;
+              ret = 0;
+              synced = 0;
+              syncCycle = 0;
+              Serial.print("Comm ended or Sync failure");
             } else {
               string_buffer += ret;
               bitIndex = 0;

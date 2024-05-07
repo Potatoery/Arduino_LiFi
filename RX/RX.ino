@@ -8,7 +8,7 @@ Description : RX Code for arduino VLC Project
 */
 
 //need DEBUG?
-#define debug 1
+#define debug 0
 
 //Photodiode Input declare
 #define LDR_PIN A2
@@ -49,8 +49,8 @@ char ret = 0;
 int bitIndex = 0;
 
 //for menchester code self clocking
-int clk_half = CLK * 0.5;
-int clk_quarter = CLK * 0.25;
+float clk_half = CLK * 0.5;
+float clk_quarter = CLK * 0.25;
 
 //how many bit has been synced
 int syncCycle = 0;
