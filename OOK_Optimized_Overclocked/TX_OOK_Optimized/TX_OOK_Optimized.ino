@@ -7,8 +7,10 @@ Description : TX Code for arduino VLC Project
 ##############################################
 */
 
+#include "digitalWriteFast.h"
+
 //LED OUTPUT DECLARE
-#define LED_PIN A2
+#define LED_PIN 10
 
 //CLK LENGTH(ms)
 #define CLK 2
@@ -24,6 +26,7 @@ Description : TX Code for arduino VLC Project
 
 //clk boolean
 bool clk = 0;
+float clk_half = CLK * 0.5;
 
 //inputString Setup
 const char inputString[LEN] = "hello, its reliable test for very very very very very very very long menchester code";
@@ -84,12 +87,23 @@ void setup() {
 void loop() {
   clk = !clk;
   sending_value = clk ^ string_Signal[stringIndex];
-  digitalWrite(LED_PIN, sending_value);
-  delayMicroseconds(CLK/2 *1000);
+  //digitalWrite(LED_PIN, sending_value);
+  if(sending_value == 1){
+    digitalWriteFast(LED_PIN, 1);
+  }else{
+    digitalWriteFast(LED_PIN, 0);
+  }
+  delayMicroseconds(clk_half *1000);
   clk = !clk;
   sending_value = clk ^ string_Signal[stringIndex];
-  digitalWrite(LED_PIN, sending_value);
-  delayMicroseconds(CLK/2 * 1000);
+  //digitalWrite(LED_PIN, sending_value);
+    //digitalWrite(LED_PIN, sending_value);
+  if(sending_value == 1){
+    digitalWriteFast(LED_PIN, 1);
+  }else{
+    digitalWriteFast(LED_PIN, 0);
+  }
+  delayMicroseconds(clk_half * 1000);
   stringIndex += 1;
   if(stringIndex == (strlen(inputString) + SYNCBYTE + 1) * 8) {
       stringIndex = 0;

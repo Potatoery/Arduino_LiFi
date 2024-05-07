@@ -9,6 +9,7 @@ Description : RX Code for arduino VLC Project
 
 //need DEBUG?
 #define debug 0
+#define reversed 0
 
 // Define various ADC prescaler 
 // For Fast sampling rate
@@ -28,10 +29,10 @@ const unsigned char PS_128 = (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);
 #define CLK 2
 
 //Threshold(will be replaced with LPF of input)
-#define THRESHOLD 550
+#define THRESHOLD 60
 
 //How many bit to be synced
-#define SYNC_LENGTH 4
+#define SYNC_LENGTH 8
 
 //for find threshold //FOR DEBUG
 float suggestion_temp = 0;
@@ -50,6 +51,10 @@ bool state = 0;
 //is it synced
 bool synced = 0;
 
+//reversing variable
+bool basis1 = 0;
+bool basis2 = 1;
+
 //received letter
 char ret = 0;
 char buffer = 0;
@@ -62,7 +67,7 @@ float clk_half = CLK * 0.5;
 float clk_quarter = CLK * 0.25;
 
 //how many bit has been synced
-int syncCycle = 0;
+int8_t syncCycle = 0;
 
 //received string
 String string_buffer = "";
@@ -74,6 +79,13 @@ void setup() {
   ADCSRA |= PS_16;
   Serial.begin(921600);
   Serial.println("started");
+  if(reversed){
+    basis1 = 0;
+    basis2 = 1;
+  }else{
+    basis1 = 1;
+    basis2 = 0;
+  }
 }
 
 void loop() {
@@ -88,16 +100,15 @@ void loop() {
   if(current_state != previous_state){
     //IS IT REALLY SYNCED======================================================
     if(synced == 0){
-      Serial.print(String(analogRead(LDR_PIN)) + " " + String(current_state) + String(previous_state) + " || " + state + " " + "SYNCING SYSTEM || " + string_buffer + "\n");
       if(current_state == 1){
         syncCycle += 1;
-        delayMicroseconds(int(clk_half*1000)+100);
+        delayMicroseconds(int(clk_half*1000)+150);
         previous_state = get_ldr();
       }else{
+        //Serial.print(String(voltage) + " " + String(current_state) + String(previous_state) + " || " + state + " " + "Synchronizing... || " + string_buffer + "\n");
         syncCycle = 0;
-        //delay for compensate timing incorrection
-        delayMicroseconds(int(clk_quarter*1000)+100);
-        previous_state = get_ldr();  
+        previous_state = current_state;  
+        delayMicroseconds(6);
       }
       if(syncCycle > SYNC_LENGTH){
         synced = 1;
@@ -105,7 +116,7 @@ void loop() {
     //IS IT REALLY SYNCED======================================================
     }else{
     //WHEN IT SYNCED===========================================================
-      delayMicroseconds((clk_half)*1000 + 150);
+      delayMicroseconds((clk_half)*1000 + 100);
       previous_state = get_ldr();
       if(state == 0){
         buffer = buffer << 1;
@@ -132,12 +143,13 @@ void loop() {
               if(ret == 0xFF){
                 ret = 0;
               }else{
+                Serial.println("Comm ended or Sync failure, ret was " + String(int(ret)));
                 state = 0;
                 ret = 0;
-                bitIndex = 0;
                 synced = 0;
+                bitIndex = 0;
                 syncCycle = 0;
-                Serial.print("Comm ended or Sync failure");
+                string_buffer = "";
               }
             } else {
               string_buffer += ret;
@@ -164,7 +176,7 @@ void loop() {
 
 bool get_ldr() {
   voltage = analogRead(LDR_PIN);
-  return voltage > THRESHOLD ? false : true;
+  return voltage > THRESHOLD ? basis1 : basis2;
 }
 
 int get_ma(){

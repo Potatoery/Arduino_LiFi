@@ -14,13 +14,13 @@ Note : Frequency Modulation code
 bool debug = 0;
 
 //LED OUTPUT DECLARE
-#define LED A2
+#define LED 10
 
 //Frequency Settings
-#define FREQ00 750
-#define FREQ01 1250
-#define FREQ11 1750
-#define FREQ10 2250
+#define FREQ00 1040
+#define FREQ01 1440
+#define FREQ11 1840
+#define FREQ10 2240
 
 //SYNCBYTE before transmission start
 //Minimum 2 ( SOT should be included, Buffer should be flushed at RX )
@@ -36,7 +36,7 @@ bool debug = 0;
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 //inputString Setup
-const char PROGMEM inputString[LEN] = "hello, its reliable test for very very very very very very very long menchester code";
+const char inputString[LEN] = "hello, its reliable test for very very very very very very very long menchester code";
 
 //128BYTE BOOLEAN-ARRAY to store binary text data
 bool string_Signal[1024] = {0, }; 
@@ -122,7 +122,7 @@ void loop() {
       // Serial.print("\n");
       // Serial.print(String((_time_ended) - (_time_started)));
       //FOR BENCHMARKING===========================
-      delay(100);
+      delay(1);
       //FOR BENCHMARKING===========================
       // _time_started = millis();
       //FOR BENCHMARKING===========================

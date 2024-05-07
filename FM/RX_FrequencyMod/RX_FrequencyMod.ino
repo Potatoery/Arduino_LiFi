@@ -15,22 +15,22 @@ Note : Frequency Modulation code
 #define PD A2
 
 //PD THRESHOLD
-#define THRESHOLD 55
+#define THRESHOLD 60
 
 //Sampling Period
 #define SAMPLING_PERIOD 10 //us
 
 //Frequency Settings
-#define FREQ00 750
-#define FREQ01 1250
-#define FREQ11 1750
-#define FREQ10 2250
+#define FREQ00 1000
+#define FREQ01 1400
+#define FREQ11 1800
+#define FREQ10 2200
 
 //for find threshold //FOR DEBUG
 float suggestion_temp = 0;
 
 //Frequency boundaries
-int boundary = 250;
+int boundary = 200;
 
 // Define various ADC prescaler 
 const unsigned char PS_16 = (1 << ADPS2); 
@@ -61,7 +61,7 @@ char buffer = 0;
 String string_buffer = "";
 
 void setup() {
-  Serial.begin(921600); 
+  Serial.begin(2000000); 
   pinMode(PD, INPUT);
   //ADC 5kHz to ~2MHz
   ADCSRA &= ~PS_128;
@@ -105,6 +105,7 @@ void get_binary(){
         Serial.print(String(voltage) + " / " +String(current_period)+" = 10"+"\n");
       }
       ret_update(1);
+      // delayMicroseconds(10);
       ret_update(0);
     }
     else if((current_period < FREQ11 + boundary)&&(current_period > FREQ11 - boundary)){
@@ -112,6 +113,7 @@ void get_binary(){
         Serial.print(String(voltage) + " / " +String(current_period)+" = 11"+"\n");
       }
       ret_update(1);
+      // delayMicroseconds(10);
       ret_update(1);
     }
     else if((current_period < FREQ01 + boundary)&&(current_period > FREQ01 - boundary)){
@@ -119,6 +121,7 @@ void get_binary(){
         Serial.print(String(voltage) + " / " +String(current_period)+" = 01"+"\n");
       }
       ret_update(0);
+      // delayMicroseconds(10);
       ret_update(1);
     }
     else if((current_period < FREQ00 + boundary)&&(current_period > FREQ00 - boundary)){
@@ -126,6 +129,7 @@ void get_binary(){
         Serial.print(String(voltage) + " / " +String(current_period)+" = 00"+"\n");
       }
       ret_update(0);
+      // delayMicroseconds(10);/
       ret_update(0);
     }else{
       if(debug){
@@ -140,12 +144,14 @@ int get_period(){
 
 void ret_update(bool temp){
   //Serial.print(String(voltage) + " / " +String(current_period)+" "+ string_buffer +"\n");
-  if(state = 0){
+  if(state == 0){
     buffer = buffer << 1;
     buffer = buffer | temp;
     if (buffer == 6) {
       state = 1;
       ret = 0;
+      buffer = 0;
+      Serial.println("START OF TRANSMISSION");
     }
   }else{
     ret = ret | temp << 7-bitIndex;
@@ -154,18 +160,24 @@ void ret_update(bool temp){
       if(ret == 4){
         ret = 0;
         state = 0;
-        buffer = 0;
+        bitIndex = 0;
+        string_buffer = "";
         Serial.println("END OF TRANSMISSION");
       } else if((ret < 31) | (ret > 127)){
-        ret = 0;
-        state = 0;
-        buffer = 0;
-        Serial.println("Comm ended or Wrong bytes");
+        if(ret == 0xFF){
+                ret = 0;
+        }else{
+          Serial.println("Comm ended or Sync failure, ret was " + String(int(ret)));
+          ret = 0;
+          state = 0;
+          bitIndex = 0;
+          string_buffer = "";
+        }
       } else {
-        Serial.print(String(voltage) + " / " +String(current_period)+" = "+ string_buffer +"\n");
         string_buffer += ret;
         bitIndex = 0;
         ret = 0;
+        Serial.print(String(voltage) + " " + String(current_period) + " || " + state + " " + "RECEIVING BITS || " + string_buffer + "\n");
       }
     }
   }
