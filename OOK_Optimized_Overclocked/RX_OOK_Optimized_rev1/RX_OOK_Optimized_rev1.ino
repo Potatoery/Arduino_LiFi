@@ -10,6 +10,7 @@ Description : RX Code for arduino VLC Project
 //need DEBUG?
 #define debug 0
 #define reversed 0
+#define auto_threshold 1
 
 // Define various ADC prescaler 
 // For Fast sampling rate
@@ -28,9 +29,6 @@ const unsigned char PS_128 = (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);
 //CLK length(ms)
 #define CLK 2
 
-//Threshold(will be replaced with LPF of input)
-#define THRESHOLD 60
-
 //How many bit to be synced
 #define SYNC_LENGTH 8
 
@@ -43,6 +41,7 @@ bool current_state = 0;
 bool past_state = 0; //for fatal error check
 
 //ADC level
+int threshold = 60;
 int voltage = 0;
 
 //is it receiving
@@ -77,7 +76,7 @@ void setup() {
   //SLOW SERIAL COMM CAUSES ERROR
   ADCSRA &= ~PS_128;
   ADCSRA |= PS_16;
-  Serial.begin(921600);
+  Serial.begin(2000000);
   Serial.println("started");
   if(reversed){
     basis1 = 0;
@@ -166,6 +165,9 @@ void loop() {
       Serial.println(String(voltage) + " || Suggesting threshold is, " + String(get_ma()));
       delay(15);
     }
+    if(auto_threshold){
+      threshold = get_ma();
+    }
   previous_state = current_state;
   //Arduino ref says under 3~6 microsec delay is not guarenteed
   delayMicroseconds(6);
@@ -176,7 +178,7 @@ void loop() {
 
 bool get_ldr() {
   voltage = analogRead(LDR_PIN);
-  return voltage > THRESHOLD ? basis1 : basis2;
+  return voltage > threshold ? basis1 : basis2;
 }
 
 int get_ma(){

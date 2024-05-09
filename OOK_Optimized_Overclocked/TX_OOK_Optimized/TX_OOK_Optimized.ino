@@ -10,7 +10,7 @@ Description : TX Code for arduino VLC Project
 #include "digitalWriteFast.h"
 
 //LED OUTPUT DECLARE
-#define LED_PIN 10
+#define LED_PIN A2
 
 //CLK LENGTH(ms)
 #define CLK 2
@@ -114,7 +114,7 @@ void loop() {
       // Serial.print("\n");
       // Serial.print(String((_time_ended) - (_time_started)));
       //FOR BENCHMARKING===========================
-      delay(10);
+      delay(0);
       //FOR BENCHMARKING===========================
       // _time_started = millis();
       //FOR BENCHMARKING===========================
