@@ -15,7 +15,7 @@ Note : Frequency Modulation code
 bool debug = 0;
 
 //LED OUTPUT DECLARE
-#define LED A2
+#define LED 10
 
 //Frequency Settings
 #define FREQ00 1040
@@ -59,13 +59,15 @@ bool _symbol_SOT[8] = {0, 0, 0, 0, 0, 1, 1, 0}; // 6
 
 bool _symbol_SOT_Control[8] = {0, 0, 0, 0, 0, 1, 0, 1}; // 5
 
-bool _symbol_Control_Forward[8]; // 8
+// bool _symbol_Control_Forward[8]; // 8
 
-bool _symbol_Control_Backward[8]; // 9
+// bool _symbol_Control_Backward[8]; // 9
 
-bool _symbol_Control_Rotate[8]; // 10
+// bool _symbol_Control_Rotate_Left[8]; // 10
 
-bool _symbol_Control_ChangeSpeed[8]; // 11
+// bool _symbol_Control_Rotate_Right[8]; // 11
+
+bool _symbol_Control_ChangeSpeed[8]; // 12
 
 bool _symbol_SOT_Image[8] = {0, 0, 0, 0, 0, 1, 1, 1}; //7
 

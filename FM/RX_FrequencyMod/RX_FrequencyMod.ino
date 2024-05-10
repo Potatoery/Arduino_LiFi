@@ -8,6 +8,8 @@ Note : Frequency Modulation code
 ##############################################
 */
 
+#include "motor_control.h"
+
 //need DEBUG?
 #define debug 0
 
@@ -159,17 +161,17 @@ void ret_update(bool temp){
       ret = 0;
       buffer = 0;
       Serial.println("START OF TEXT TRANSMISSION");
-    }else if (buffer == 7) {
-      state = 4;
-      ret = 0;
-      buffer = 0;
-      Serial.println("START OF IMAGE TRANSMISSION");
-    }else if (buffer == 5) {
-      state = 2;
-      ret = 0;
-      buffer = 0;
-      Serial.println("START OF CONTROL TRANSMISSION");
-    }
+    }//else if (buffer == 7) {
+    //   state = 4;
+    //   ret = 0;
+    //   buffer = 0;
+    //   Serial.println("START OF IMAGE TRANSMISSION");
+    // }else if (buffer == 5) {
+    //   state = 2;
+    //   ret = 0;
+    //   buffer = 0;
+    //   Serial.println("START OF CONTROL TRANSMISSION");
+    // }
   }else if(state == 1){
     ret = ret | temp << 7-bitIndex;
     bitIndex += 1;
@@ -208,12 +210,14 @@ void ret_update(bool temp){
         string_buffer = "";
         Serial.println("END OF TRANSMISSION");
       }else if(ret == 8){
-        //call forward
+        forward();
       }else if(ret == 9){
-        //call backward
+        backward();
       }else if(ret == 10){
-        //call rotate
+        rotate(0);
       }else if(ret == 11){
+        rotate(1);
+      }else if(ret == 12){
         //call change speed //change state
       } else {
         if(ret == 0xFF){
@@ -227,7 +231,7 @@ void ret_update(bool temp){
         }
       }
     }
-  }else if (state == 3){
+  }else if (state == 4){
     ret = ret | temp << 7-bitIndex;
     bitIndex += 1;
     if(bitIndex == 8){

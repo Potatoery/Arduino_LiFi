@@ -10,7 +10,7 @@ Description : TX Code for arduino VLC Project
 #include "digitalWriteFast.h"
 
 //LED OUTPUT DECLARE
-#define LED_PIN A2
+#define LED_PIN 10
 
 //CLK LENGTH(ms)
 #define CLK 2

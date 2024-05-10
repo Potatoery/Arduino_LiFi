@@ -18,7 +18,7 @@ Description : RX Code for arduino VLC Project
 const unsigned char PS_16 = (1 << ADPS2); 
 const unsigned char PS_32 = (1 << ADPS2) | (1 << ADPS0); 
 const unsigned char PS_64 = (1 << ADPS2) | (1 << ADPS1); 
-const unsigned char PS_128 = (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);
+const unsigned char PS_128 = (1 << ADPS2)z | (1 << ADPS1) | (1 << ADPS0);
 
 //Photodiode Input declare
 #define LDR_PIN A2
