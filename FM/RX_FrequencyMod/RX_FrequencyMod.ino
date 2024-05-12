@@ -7,11 +7,20 @@ Description : RX Code for arduino VLC Project
 Note : Frequency Modulation code
 ##############################################
 */
+/*
+Special thanks to Jeff Thompson
+Ideas for Write BMP to SDCARD
+*/
 
 #include "motor_control.h"
+#include <SPI.h>
+#include <SD.h>
 
 //need DEBUG?
 #define debug 0
+
+//use SDCARDS or images?
+#define receive_image 0
 
 //wanna automatic threshold?
 #define auto_threshold 1
@@ -59,6 +68,22 @@ int voltage;
 //for IDEA Develop
 int8_t bitIndex = 0;
 int temp;
+
+//car control values
+bool speed_comm = 0;
+
+//for image
+char name[] = "image_0000.bmp";
+int32_t location = 0;
+int32_t dataStartingOffset;
+int32_t width;
+int32_t height;
+int16_t pixelsize;
+File bmpImage;
+unsigned char bmpFileHeader[14] =   {'B','M', 0,0,0,0,0,0,0,0,54,0,0,0};
+unsigned char bmpInfoHeader[40] = {40 ,  0, 0,0,0,0,0,0,0,0, 0,0,1,0,24,0};
+uint32_t fileSize = 54 + height * width;
+bool _image_transmitting = 0;
 
 //Received values
 char ret = 0;
@@ -161,17 +186,39 @@ void ret_update(bool temp){
       ret = 0;
       buffer = 0;
       Serial.println("START OF TEXT TRANSMISSION");
-    }//else if (buffer == 7) {
-    //   state = 4;
-    //   ret = 0;
-    //   buffer = 0;
-    //   Serial.println("START OF IMAGE TRANSMISSION");
-    // }else if (buffer == 5) {
-    //   state = 2;
-    //   ret = 0;
-    //   buffer = 0;
-    //   Serial.println("START OF CONTROL TRANSMISSION");
-    // }
+    }else if (buffer == 7) {
+      state = 3;
+      ret = 0;
+      buffer = 0;
+      Serial.println("START OF IMAGE TRANSMISSION");
+      for (int i=0; i<10000; i++) {
+        name[6] = (i/1000)%10 + '0';    // thousands place
+        name[7] = (i/100)%10 + '0';     // hundreds
+        name[8] = (i/10)%10 + '0';      // tens
+        name[9] = i%10 + '0';           // ones
+        if (SD.open(name, O_CREAT | O_EXCL | O_WRITE)) {
+          break;
+        }
+        bmpFileHeader[ 2] = (unsigned char)(fileSize      );
+        bmpFileHeader[ 3] = (unsigned char)(fileSize >>  8);
+        bmpFileHeader[ 4] = (unsigned char)(fileSize >> 16);
+        bmpFileHeader[ 5] = (unsigned char)(fileSize >> 24);
+
+        bmpInfoHeader[ 4] = (unsigned char)(       width      );
+        bmpInfoHeader[ 5] = (unsigned char)(       width >>  8);
+        bmpInfoHeader[ 6] = (unsigned char)(       width >> 16);
+        bmpInfoHeader[ 7] = (unsigned char)(       width >> 24);
+        bmpInfoHeader[ 8] = (unsigned char)(       height      );
+        bmpInfoHeader[ 9] = (unsigned char)(       height >>  8);
+        bmpInfoHeader[10] = (unsigned char)(       height >> 16);
+        bmpInfoHeader[11] = (unsigned char)(       height >> 24);
+      }
+    }else if (buffer == 5) {
+      state = 2;
+      ret = 0;
+      buffer = 0;
+      Serial.println("START OF CONTROL TRANSMISSION");
+    }
   }else if(state == 1){
     ret = ret | temp << 7-bitIndex;
     bitIndex += 1;
@@ -203,49 +250,74 @@ void ret_update(bool temp){
     ret = ret | temp << 7-bitIndex;
     bitIndex += 1;
     if(bitIndex == 8){
-      if(ret == 4){
+      if(speed_comm){
+        changeSpeed(int(ret));
+        speed_comm = 0;
+        ret = 0;
+        bitIndex = 0;
+      }else{
+        if(ret == 4){
         ret = 0;
         state = 0;
         bitIndex = 0;
         string_buffer = "";
         Serial.println("END OF TRANSMISSION");
-      }else if(ret == 8){
-        forward();
-      }else if(ret == 9){
-        backward();
-      }else if(ret == 10){
-        rotate(0);
-      }else if(ret == 11){
-        rotate(1);
-      }else if(ret == 12){
-        //call change speed //change state
-      } else {
-        if(ret == 0xFF){
-                ret = 0;
-        }else{
-          Serial.println("Comm ended or Sync failure, ret was " + String(int(ret)));
+        }else if(ret == 8){
+          forward();
           ret = 0;
-          state = 0;
           bitIndex = 0;
-          string_buffer = "";
+        }else if(ret == 9){
+          backward();
+          ret = 0;
+          bitIndex = 0;
+        }else if(ret == 10){
+          rotate(0);
+          ret = 0;
+          bitIndex = 0;
+        }else if(ret == 11){
+          rotate(1);
+          ret = 0;
+          bitIndex = 0;
+        }else if(ret == 12){
+          state = 2;
+          ret = 0;
+          bitIndex = 0;
+          speed_comm = 1;
+        } else {
+          if(ret == 0xFF){
+            ret = 0;
+          }else{
+            Serial.println("Comm ended or Sync failure, ret was " + String(int(ret)));
+            ret = 0;
+            state = 0;
+            bitIndex = 0;
+            string_buffer = "";
+          }
         }
       }
     }
-  }else if (state == 4){
+  }else if (state == 3){
     ret = ret | temp << 7-bitIndex;
     bitIndex += 1;
     if(bitIndex == 8){
-      if(ret > 255){
-          Serial.println("Comm ended or Sync failure, ret was " + String(int(ret)));
-          ret = 0;
-          state = 0;
-          bitIndex = 0;
-          string_buffer = "";
-      }else{
-        //change speed
+      if(ret == 4){
+        ret = 0;
+        state = 0;
+        bitIndex = 0;
+        string_buffer = "";
+        location = 0;
+        bmpImage.close();
+        Serial.println("END OF TRANSMISSION");
+      }else if(ret == 8){
+        location += 1;
+        Serial.println("END OF WIDTH IMAGE");
+      } else {
+        bmpImage.write(&ret, 1);
+        bitIndex = 0;
+        ret = 0;
+        Serial.print(String(voltage) + " " + String(current_period) + " || " + state + " " + "RECEIVING IMAGES || " + string_buffer + "\n");
       }
     }
-    state = 0;
   }
 }
 

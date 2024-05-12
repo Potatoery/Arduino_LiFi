@@ -10,9 +10,13 @@ Note : Frequency Modulation code
 
 #include "digitalWriteFast.h"
 #include "motor_control.h"
+#include <SPI.h>
+#include <SD.h>
 
 //NEED DEBUG?
-bool debug = 0;
+#define debug 0
+//Is it image?
+#define send_image 0
 
 //LED OUTPUT DECLARE
 #define LED 10
@@ -24,7 +28,8 @@ bool debug = 0;
 #define FREQ10 2240
 
 //SYNCBYTE before transmission start
-//Minimum 2 ( SOT should be included, Buffer should be flushed at RX )
+//Minimum 1
+//Suggesting 2 ( SOT should be included, Buffer should be flushed at RX )
 #define SYNCBYTE 2 //bytes
 
 //Duration of certain Frequency
@@ -40,12 +45,22 @@ bool debug = 0;
 const char inputString[LEN] = "hello, its reliable test for very very very very very very very long menchester code";
 
 //128BYTE BOOLEAN-ARRAY to store binary text data
-bool string_Signal[1024] = {0, }; 
+// bool string_Signal[1024] = {0, }; 
+uint8_t string_Signal[128] = {0, };
 int signal_length = 0;
 
 //for sending loop
 int stringIndex = 0;
+uint8_t bitIndex = 0;
 bool toggle = 0;
+
+//for image
+int32_t location = 0;
+int32_t dataStartingOffset;
+int32_t width;
+int32_t height;
+int16_t pixelsize;
+File bmpImage;
 
 // Define various ADC prescaler 
 const unsigned char PS_16 = (1 << ADPS2); 
@@ -98,20 +113,24 @@ void setup() {
 }
 
 void loop() {
-  if(string_Signal[stringIndex]){
-    if(string_Signal[stringIndex+1]){
+  if(bitRead(string_Signal[stringIndex], bitIndex)){
+    if(bitRead(string_Signal[stringIndex], bitIndex + 1)){
       write_11();
     }else{
       write_10();
     }
   }else{
-    if(string_Signal[stringIndex+1]){
+    if(bitRead(string_Signal[stringIndex], bitIndex + 1)){
       write_01();
     }else{
       write_00();
     }
   }
-  stringIndex += 2;
+  bitIndex += 2;
+  if(bitIndex == 8){
+    bitIndex = 0;
+    stringIndex += 1;
+  }
   if(stringIndex >= signal_length) {
       stringIndex = 0;
       //FOR BENCHMARKING===========================
@@ -132,20 +151,32 @@ void buffer_text(){
   for (int i = 0; i < strlen(inputString) + SYNCBYTE + 1; i++) {
     if(i == SYNCBYTE - 1){
       for (int j = 0; j < 8; j++) {
-          string_Signal[8*i + 7-j] = _symbol_SOT[7 - j];
+        if(_symbol_SOT[7 - j]){
+          bitSet(string_Signal[8*i], 7-j);
+        }else{
+          bitClear(string_Signal[8*i], 7-j);
+        }
       }
     }
     else if(i < SYNCBYTE - 1){
       for (int j = 0; j < 8; j++) {
-          string_Signal[8*i + 7-j] = (1);
+          bitSet(string_Signal[8*i], 7-j);
       }
     } else if(i == (strlen(inputString) + SYNCBYTE)) {
       for (int j = 0; j < 8; j++) {
-          string_Signal[8*i + 7-j] = _symbol_EOT[7 - j];
+        if(_symbol_EOT[7 - j]){
+          bitSet(string_Signal[8*i], 7-j);
+        }else{
+          bitClear(string_Signal[8*i], 7-j);
+        }
       }
     } else {
       for (int j = 0; j < 8; j++){
-          string_Signal[8*i + 7-j] = ((inputString[i - SYNCBYTE] & (0x01 << j)) != 0);
+        if((inputString[i - SYNCBYTE] & (0x01 << j)) != 0){
+          bitSet(string_Signal[8*i], 7-j);
+        }else{
+          bitClear(string_Signal[8*i], 7-j);
+        }
       }
     }
   }
@@ -157,20 +188,32 @@ void buffer_control(char control_signal, char is_it_speed = 0){
     for (int i = 0; i < 1 + SYNCBYTE + 1; i++) {
       if(i == SYNCBYTE - 1){
         for (int j = 0; j < 8; j++) {
-          string_Signal[8*i + 7-j] = _symbol_SOT_Control[7 - j];
+          if(_symbol_SOT_Control[7 - j]){
+            bitSet(string_Signal[8*i], 7-j);
+          }else{
+            bitClear(string_Signal[8*i], 7-j);
+          }
         }
       }
       else if(i < SYNCBYTE - 1){
         for (int j = 0; j < 8; j++) {
-          string_Signal[8*i + 7-j] = (1);
+          bitSet(string_Signal[8*i], 7-j);
         }
       } else if(i == (1 + SYNCBYTE)) {
         for (int j = 0; j < 8; j++) {
-          string_Signal[8*i + 7-j] = _symbol_EOT[7 - j];
+          if(_symbol_EOT[7 - j]){
+            bitSet(string_Signal[8*i], 7-j);
+          }else{
+            bitClear(string_Signal[8*i], 7-j);
+          }
         }
       } else {
         for (int j = 0; j < 8; j++){
-          string_Signal[8*i + 7-j] = ((control_signal & (0x01 << j)) != 0);;
+          if((control_signal & (0x01 << j)) != 0){
+            bitSet(string_Signal[8*i], 7-j);
+          }else{
+            bitClear(string_Signal[8*i], 7-j);
+          }
         }
       }
     }
@@ -179,33 +222,45 @@ void buffer_control(char control_signal, char is_it_speed = 0){
     for (int i = 0; i < 2 + SYNCBYTE + 1; i++) {
       if(i == SYNCBYTE - 1){
         for (int j = 0; j < 8; j++) {
-          string_Signal[8*i + 7-j] = _symbol_SOT_Control[7 - j];
+          if(_symbol_SOT_Control[7 - j]){
+            bitSet(string_Signal[8*i], 7-j);
+          }else{
+            bitClear(string_Signal[8*i], 7-j);
+          }
         }
       }
       else if(i < SYNCBYTE - 1){
         for (int j = 0; j < 8; j++) {
-          string_Signal[8*i + 7-j] = (1);
+          bitSet(string_Signal[8*i], 7-j);
         }
       } else if(i == (1 + SYNCBYTE)) {
         for (int j = 0; j < 8; j++) {
-          string_Signal[8*i + 7-j] = _symbol_EOT[7 - j];
+          if(_symbol_EOT[7 - j]){
+            bitSet(string_Signal[8*i], 7-j);
+          }else{
+            bitClear(string_Signal[8*i], 7-j);
+          }
         }
       } else {
         for (int j = 0; j < 8; j++){
-          string_Signal[8*i + 7-j] = ((control_signal & (0x01 << j)) != 0);
+          if((control_signal & (0x01 << j)) != 0){
+            bitSet(string_Signal[8*i], 7-j);
+          }else{
+            bitClear(string_Signal[8*i], 7-j);
+          }
         }
         i += 1;
         for (int j = 0; j < 8; j++){
-          string_Signal[8*i + 7-j] = ((is_it_speed & (0x01 << j)) != 0);
+          if((is_it_speed & (0x01 << j)) != 0){
+            bitSet(string_Signal[8*i], 7-j);
+          }else{
+            bitClear(string_Signal[8*i], 7-j);
+          }
         }
       }
     }
   signal_length = (SYNCBYTE + 3) * 8;  
   }
-}
-
-void buffer_image(int location){
-
 }
 
 void write_00(){
@@ -266,4 +321,91 @@ void write_11(){
   if(debug){
     Serial.print(String(FREQ11) + "\n");
   }
+}
+
+void buffer_image(){
+  if(location != 0){
+    bmpImage = SD.open("image.bmp" ,FILE_READ);
+    dataStartingOffset = readNbytesInt(&bmpImage, 0x0A, 4);
+    width = readNbytesInt(&bmpImage, 0x12, 4);
+    height = readNbytesInt(&bmpImage, 0x16, 4);
+    pixelsize = readNbytesInt(&bmpImage, 0x1C, 2);
+  }
+
+  if(pixelsize != 24){
+    Serial.println("Exception has occured || 24bpp");
+    while(1);
+  }
+
+  uint8_t B, G, R;
+  uint8_t Grayscale; 
+
+  for (int32_t i = 0; i < width + SYNCBYTE + 1; i++) {
+    if(i == SYNCBYTE - 1){
+      for (int j = 0; j < 8; j++) {
+        if(_symbol_SOT[7 - j]){
+          bitSet(string_Signal[8*i], 7-j);
+        }else{
+          bitClear(string_Signal[8*i], 7-j);
+        }
+      }
+    }
+    else if(i < SYNCBYTE - 1){
+      for (int j = 0; j < 8; j++) {
+          bitSet(string_Signal[8*i], 7-j);
+      }
+    } else if(i == (width + SYNCBYTE)){
+      if(location == height - 1){
+        for (int j = 0; j < 8; j++) {
+          if(_symbol_EOT[7 - j]){
+            bitSet(string_Signal[8*i], 7-j);
+          }else{
+            bitClear(string_Signal[8*i], 7-j);
+          }
+          bmpImage.close();
+          location = 0;
+        }
+      }else{
+        for (int j = 0; j < 8; j++) {
+          if(_symbol_EOL_Image[7 - j]){
+            bitSet(string_Signal[8*i], 7-j);
+          }else{
+            bitClear(string_Signal[8*i], 7-j);
+          }
+        }
+      }
+    } else {
+      B = bmpImage.read();
+      G = bmpImage.read();
+      R = bmpImage.read();
+      Grayscale = B / 10 + G / 2 + R / 3;
+      if((Grayscale == 4) || (Grayscale == 8)){
+        Grayscale += 1;
+      }
+      for (int j = 0; j < 8; j++) {
+        if(bitRead(Grayscale, 7-j)){
+          bitSet(string_Signal[8*i], 7-j);
+        }else{
+          bitClear(string_Signal[8*i], 7-j);
+        }
+      }
+    }
+  }
+  location += 1;
+}
+
+int32_t readNbytesInt(File *p_file, int position, byte nBytes){
+  //can't exceed 4bytes
+  //assumes 24bpp BMP
+    if (nBytes > 4)
+        return 0;
+    p_file->seek(position);
+
+    int32_t weight = 1;
+    int32_t result = 0;
+    for (; nBytes; nBytes--){
+        result += weight * p_file->read();
+        weight <<= 8;
+    }
+    return result;
 }
