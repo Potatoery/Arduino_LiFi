@@ -80,7 +80,7 @@ int32_t width;
 int32_t height;
 int16_t pixelsize;
 File bmpImage;
-unsigned char bmpFileHeader[14] =   {'B','M', 0,0,0,0,0,0,0,0,54,0,0,0};
+unsigned char bmpFileHeader[14] = {'B','M', 0,0,0,0,0,0,0,0,54,0,0,0};
 unsigned char bmpInfoHeader[40] = {40 ,  0, 0,0,0,0,0,0,0,0, 0,0,1,0,24,0};
 uint32_t fileSize = 54 + height * width;
 bool _image_transmitting = 0;
@@ -199,45 +199,40 @@ void ret_update(bool temp){
         if (SD.open(name, O_CREAT | O_EXCL | O_WRITE)) {
           break;
         }
-        bmpFileHeader[ 2] = (unsigned char)(fileSize      );
-        bmpFileHeader[ 3] = (unsigned char)(fileSize >>  8);
-        bmpFileHeader[ 4] = (unsigned char)(fileSize >> 16);
-        bmpFileHeader[ 5] = (unsigned char)(fileSize >> 24);
-
-        bmpInfoHeader[ 4] = (unsigned char)(       width      );
-        bmpInfoHeader[ 5] = (unsigned char)(       width >>  8);
-        bmpInfoHeader[ 6] = (unsigned char)(       width >> 16);
-        bmpInfoHeader[ 7] = (unsigned char)(       width >> 24);
-        bmpInfoHeader[ 8] = (unsigned char)(       height      );
-        bmpInfoHeader[ 9] = (unsigned char)(       height >>  8);
-        bmpInfoHeader[10] = (unsigned char)(       height >> 16);
-        bmpInfoHeader[11] = (unsigned char)(       height >> 24);
       }
+      bmpFileHeader[ 2] = (unsigned char)(fileSize      );
+      bmpFileHeader[ 3] = (unsigned char)(fileSize >>  8);
+      bmpFileHeader[ 4] = (unsigned char)(fileSize >> 16);
+      bmpFileHeader[ 5] = (unsigned char)(fileSize >> 24);
+
+      bmpInfoHeader[ 4] = (unsigned char)( width      );
+      bmpInfoHeader[ 5] = (unsigned char)( width >>  8);
+      bmpInfoHeader[ 6] = (unsigned char)( width >> 16);
+      bmpInfoHeader[ 7] = (unsigned char)( width >> 24);
+      bmpInfoHeader[ 8] = (unsigned char)(height      );
+      bmpInfoHeader[ 9] = (unsigned char)(height >>  8);
+      bmpInfoHeader[10] = (unsigned char)(height >> 16);
+      bmpInfoHeader[11] = (unsigned char)(height >> 24);
+      bmpImage.write(bmpFileHeader, sizeof(bmpFileHeader));
+      bmpImage.write(bmpInfoHeader, sizeof(bmpInfoHeader));
     }else if (buffer == 5) {
       state = 2;
       ret = 0;
       buffer = 0;
       Serial.println("START OF CONTROL TRANSMISSION");
     }
-  }else if(state == 1){
+  } else if(state == 1){
+    //TEXT TRANSMISSION
     ret = ret | temp << 7-bitIndex;
     bitIndex += 1;
     if(bitIndex == 8){
       if(ret == 4){
-        ret = 0;
-        state = 0;
-        bitIndex = 0;
-        string_buffer = "";
-        Serial.println("END OF TRANSMISSION");
+        _exception_comm_ended();
       } else if((ret < 31) | (ret > 127)){
         if(ret == 0xFF){
                 ret = 0;
         }else{
-          Serial.println("Comm ended or Sync failure, ret was " + String(int(ret)));
-          ret = 0;
-          state = 0;
-          bitIndex = 0;
-          string_buffer = "";
+          _exception_comm_failed();
         }
       } else {
         string_buffer += ret;
@@ -257,11 +252,7 @@ void ret_update(bool temp){
         bitIndex = 0;
       }else{
         if(ret == 4){
-        ret = 0;
-        state = 0;
-        bitIndex = 0;
-        string_buffer = "";
-        Serial.println("END OF TRANSMISSION");
+        _exception_comm_ended();
         }else if(ret == 8){
           forward();
           ret = 0;
@@ -287,11 +278,7 @@ void ret_update(bool temp){
           if(ret == 0xFF){
             ret = 0;
           }else{
-            Serial.println("Comm ended or Sync failure, ret was " + String(int(ret)));
-            ret = 0;
-            state = 0;
-            bitIndex = 0;
-            string_buffer = "";
+            _exception_comm_failed();
           }
         }
       }
@@ -301,21 +288,22 @@ void ret_update(bool temp){
     bitIndex += 1;
     if(bitIndex == 8){
       if(ret == 4){
-        ret = 0;
-        state = 0;
-        bitIndex = 0;
-        string_buffer = "";
         location = 0;
         bmpImage.close();
-        Serial.println("END OF TRANSMISSION");
+        _exception_comm_ended();
       }else if(ret == 8){
-        location += 1;
+        location = 0;
         Serial.println("END OF WIDTH IMAGE");
+        _exception_comm_ended();
       } else {
         bmpImage.write(&ret, 1);
         bitIndex = 0;
         ret = 0;
+        location += 1;
         Serial.print(String(voltage) + " " + String(current_period) + " || " + state + " " + "RECEIVING IMAGES || " + string_buffer + "\n");
+        if(location > width){
+          _exception_comm_failed();
+        }
       }
     }
   }
@@ -325,4 +313,20 @@ int get_ma(){
   suggestion_temp = suggestion_temp * 0.98;
   suggestion_temp += voltage * 0.02;
   return suggestion_temp;
+}
+
+void _exception_comm_failed(){
+  ret = 0;
+  state = 0;
+  bitIndex = 0;
+  string_buffer = "";
+  Serial.println("Comm ended or Sync failure, ret was " + String(int(ret)));
+}
+
+void _exception_comm_ended(){
+  ret = 0;
+  state = 0;
+  bitIndex = 0;
+  string_buffer = "";
+  Serial.println("END OF TRANSMISSION");
 }

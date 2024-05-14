@@ -8,7 +8,7 @@ Note : Servo controll unit
 ##############################################
 */
 
-void __init__();
+void __init__(bool whichcar);
 void motor_init();
 bool forward(int duration);
 bool backward(int duration);

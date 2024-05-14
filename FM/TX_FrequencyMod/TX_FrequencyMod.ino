@@ -19,7 +19,7 @@ Note : Frequency Modulation code
 #define send_image 0
 
 //LED OUTPUT DECLARE
-#define LED 10
+#define LED A2
 
 //Frequency Settings
 #define FREQ00 1040
@@ -116,20 +116,35 @@ void loop() {
   if(bitRead(string_Signal[stringIndex], bitIndex)){
     if(bitRead(string_Signal[stringIndex], bitIndex + 1)){
       write_11();
+      if(debug){
+        Serial.println("11");
+      }
     }else{
       write_10();
+      if(debug){
+        Serial.println("10");
+      }
     }
   }else{
     if(bitRead(string_Signal[stringIndex], bitIndex + 1)){
       write_01();
+      if(debug){
+        Serial.println("01");
+      }
     }else{
       write_00();
+      if(debug){
+        Serial.println("00");
+      }
     }
   }
   bitIndex += 2;
   if(bitIndex == 8){
     bitIndex = 0;
     stringIndex += 1;
+    if(debug){
+      Serial.println("1 Byte sent ");
+    }
   }
   if(stringIndex >= signal_length) {
       stringIndex = 0;
@@ -140,7 +155,7 @@ void loop() {
       // Serial.print("\n");
       // Serial.print(String((_time_ended) - (_time_started)));
       //FOR BENCHMARKING===========================
-      delay(1);
+      // delay(1);
       //FOR BENCHMARKING===========================
       // _time_started = millis();
       //FOR BENCHMARKING===========================
@@ -152,35 +167,34 @@ void buffer_text(){
     if(i == SYNCBYTE - 1){
       for (int j = 0; j < 8; j++) {
         if(_symbol_SOT[7 - j]){
-          bitSet(string_Signal[8*i], 7-j);
+          bitSet(string_Signal[i], 7-j);
         }else{
-          bitClear(string_Signal[8*i], 7-j);
+          bitClear(string_Signal[i], 7-j);
         }
       }
-    }
-    else if(i < SYNCBYTE - 1){
+    } else if(i < SYNCBYTE - 1){
       for (int j = 0; j < 8; j++) {
-          bitSet(string_Signal[8*i], 7-j);
+          bitClear(string_Signal[i], 7-j);
       }
     } else if(i == (strlen(inputString) + SYNCBYTE)) {
       for (int j = 0; j < 8; j++) {
         if(_symbol_EOT[7 - j]){
-          bitSet(string_Signal[8*i], 7-j);
+          bitSet(string_Signal[i], 7-j);
         }else{
-          bitClear(string_Signal[8*i], 7-j);
+          bitClear(string_Signal[i], 7-j);
         }
       }
     } else {
       for (int j = 0; j < 8; j++){
         if((inputString[i - SYNCBYTE] & (0x01 << j)) != 0){
-          bitSet(string_Signal[8*i], 7-j);
+          bitSet(string_Signal[i], 7-j);
         }else{
-          bitClear(string_Signal[8*i], 7-j);
+          bitClear(string_Signal[i], 7-j);
         }
       }
     }
   }
-  signal_length = (strlen(inputString) + SYNCBYTE + 1) * 8;
+  signal_length = (strlen(inputString) + SYNCBYTE + 1);
 }
 
 void buffer_control(char control_signal, char is_it_speed = 0){
@@ -189,30 +203,30 @@ void buffer_control(char control_signal, char is_it_speed = 0){
       if(i == SYNCBYTE - 1){
         for (int j = 0; j < 8; j++) {
           if(_symbol_SOT_Control[7 - j]){
-            bitSet(string_Signal[8*i], 7-j);
+            bitSet(string_Signal[i], 7-j);
           }else{
-            bitClear(string_Signal[8*i], 7-j);
+            bitClear(string_Signal[i], 7-j);
           }
         }
       }
       else if(i < SYNCBYTE - 1){
         for (int j = 0; j < 8; j++) {
-          bitSet(string_Signal[8*i], 7-j);
+          bitClear(string_Signal[i], 7-j);
         }
       } else if(i == (1 + SYNCBYTE)) {
         for (int j = 0; j < 8; j++) {
           if(_symbol_EOT[7 - j]){
-            bitSet(string_Signal[8*i], 7-j);
+            bitSet(string_Signal[i], 7-j);
           }else{
-            bitClear(string_Signal[8*i], 7-j);
+            bitClear(string_Signal[i], 7-j);
           }
         }
       } else {
         for (int j = 0; j < 8; j++){
           if((control_signal & (0x01 << j)) != 0){
-            bitSet(string_Signal[8*i], 7-j);
+            bitSet(string_Signal[i], 7-j);
           }else{
-            bitClear(string_Signal[8*i], 7-j);
+            bitClear(string_Signal[i], 7-j);
           }
         }
       }
@@ -223,38 +237,38 @@ void buffer_control(char control_signal, char is_it_speed = 0){
       if(i == SYNCBYTE - 1){
         for (int j = 0; j < 8; j++) {
           if(_symbol_SOT_Control[7 - j]){
-            bitSet(string_Signal[8*i], 7-j);
+            bitSet(string_Signal[i], 7-j);
           }else{
-            bitClear(string_Signal[8*i], 7-j);
+            bitClear(string_Signal[i], 7-j);
           }
         }
       }
       else if(i < SYNCBYTE - 1){
         for (int j = 0; j < 8; j++) {
-          bitSet(string_Signal[8*i], 7-j);
+          bitClear(string_Signal[i], 7-j);
         }
       } else if(i == (1 + SYNCBYTE)) {
         for (int j = 0; j < 8; j++) {
           if(_symbol_EOT[7 - j]){
-            bitSet(string_Signal[8*i], 7-j);
+            bitSet(string_Signal[i], 7-j);
           }else{
-            bitClear(string_Signal[8*i], 7-j);
+            bitClear(string_Signal[i], 7-j);
           }
         }
       } else {
         for (int j = 0; j < 8; j++){
           if((control_signal & (0x01 << j)) != 0){
-            bitSet(string_Signal[8*i], 7-j);
+            bitSet(string_Signal[i], 7-j);
           }else{
-            bitClear(string_Signal[8*i], 7-j);
+            bitClear(string_Signal[i], 7-j);
           }
         }
         i += 1;
         for (int j = 0; j < 8; j++){
           if((is_it_speed & (0x01 << j)) != 0){
-            bitSet(string_Signal[8*i], 7-j);
+            bitSet(string_Signal[i], 7-j);
           }else{
-            bitClear(string_Signal[8*i], 7-j);
+            bitClear(string_Signal[i], 7-j);
           }
         }
       }
@@ -352,7 +366,7 @@ void buffer_image(){
     }
     else if(i < SYNCBYTE - 1){
       for (int j = 0; j < 8; j++) {
-          bitSet(string_Signal[8*i], 7-j);
+          bitClear(string_Signal[8*i], 7-j);
       }
     } else if(i == (width + SYNCBYTE)){
       if(location == height - 1){
