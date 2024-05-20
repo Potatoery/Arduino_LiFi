@@ -19,11 +19,17 @@ Ideas for Write BMP to SDCARD
 //need DEBUG?
 #define debug 0
 
+//BER Test Mode
+#define ber_test 1
+
 //use SDCARDS or images?
 #define receive_image 0
 
 //wanna automatic threshold?
-#define auto_threshold 1
+#define auto_threshold 0
+
+//exponential moving average
+#define exponential 0.97
 
 //Photodiode
 #define PD A2
@@ -37,6 +43,12 @@ Ideas for Write BMP to SDCARD
 #define FREQ11 1800
 #define FREQ10 2200
 
+//inputString Length
+//!!!!!!!!!!!!!!!CAUTION!!!!!!!!!!!!!!!!!!
+//IT CONSUMES HUGE MEMORY SPACE
+#define LEN 100
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 //for find threshold //FOR DEBUG
 float suggestion_temp = 0;
 
@@ -44,7 +56,7 @@ float suggestion_temp = 0;
 int boundary = 200;
 
 //PD threshold
-int threshold = 60;
+int threshold = 713;
 
 // Define various ADC prescaler 
 const unsigned char PS_16 = (1 << ADPS2); 
@@ -87,6 +99,10 @@ bool _image_transmitting = 0;
 
 //Received values
 char ret = 0;
+char ber_test_signal = 0x1E;
+uint8_t ber_count = 0;
+float ber = 0;
+const char ber_string[LEN] = "The Catholic University of Korea";
 char buffer = 0;
 bool control_buffer[24] = {0, };
 String string_buffer = "";
@@ -97,6 +113,12 @@ void setup() {
   //ADC 5kHz to ~2MHz
   ADCSRA &= ~PS_128;
   ADCSRA |= PS_16;
+  //For Debuging=========================================
+  if(debug && ber_test){
+    Serial.println("Debug & BER can't enabled at the same time");
+    while(1);
+  }
+  //For Debuging=========================================
   Serial.print(String("Started")+"\n");
 }
 
@@ -181,12 +203,12 @@ void ret_update(bool temp){
   if(state == 0){
     buffer = buffer << 1;
     buffer = buffer | temp;
-    if (buffer == 6) {
+    if (uint8_t(buffer) == 134) {
       state = 1;
       ret = 0;
       buffer = 0;
       Serial.println("START OF TEXT TRANSMISSION");
-    }else if (buffer == 7) {
+    }else if ((uint8_t(buffer) == 135) && (!ber_test)) {
       state = 3;
       ret = 0;
       buffer = 0;
@@ -215,7 +237,7 @@ void ret_update(bool temp){
       bmpInfoHeader[11] = (unsigned char)(height >> 24);
       bmpImage.write(bmpFileHeader, sizeof(bmpFileHeader));
       bmpImage.write(bmpInfoHeader, sizeof(bmpInfoHeader));
-    }else if (buffer == 5) {
+    }else if (uint8_t(buffer) == 132 && (!ber_test)) {
       state = 2;
       ret = 0;
       buffer = 0;
@@ -227,18 +249,32 @@ void ret_update(bool temp){
     bitIndex += 1;
     if(bitIndex == 8){
       if(ret == 4){
+        Serial.print(String(voltage) + " " + String(current_period) + " || " + state + " " + "RECEIVING BITS || " + string_buffer + "\n");
         _exception_comm_ended();
+        if(ber_test){ 
+          Serial.println("BER was " + String((1.0 - ber/strlen(ber_string))));
+          ber_count = 0; 
+          ber = 0;
+        }
       } else if((ret < 31) | (ret > 127)){
         if(ret == 0xFF){
                 ret = 0;
         }else{
           _exception_comm_failed();
+          if(ber_test){ 
+            Serial.println("BER was " + String(ber/strlen(ber_string)));
+            ber_count = 0; 
+            ber = 0;
+          }
         }
       } else {
+        if(ber_test){
+          ber += calculate_byte_ber();
+          ber_count += 1;
+        }
         string_buffer += ret;
         bitIndex = 0;
         ret = 0;
-        Serial.print(String(voltage) + " " + String(current_period) + " || " + state + " " + "RECEIVING BITS || " + string_buffer + "\n");
       }
     }
   }else if (state == 2){
@@ -310,9 +346,19 @@ void ret_update(bool temp){
 }
 
 int get_ma(){
-  suggestion_temp = suggestion_temp * 0.98;
-  suggestion_temp += voltage * 0.02;
+  suggestion_temp = suggestion_temp * exponential;
+  suggestion_temp += voltage * (1-exponential);
   return suggestion_temp;
+}
+
+float calculate_byte_ber(){
+  uint8_t temp = 0;
+  for(int i = 0; i < 8; i++){
+    if(bitRead(ret, i) == bitRead(ber_string[ber_count], i)){
+      temp += 1;
+    }
+  }
+  return (float)temp / 8.0;
 }
 
 void _exception_comm_failed(){

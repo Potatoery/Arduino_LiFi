@@ -15,11 +15,15 @@ Note : Frequency Modulation code
 
 //NEED DEBUG?
 #define debug 0
+
+//BER Test Mode
+#define ber_test 0
+
 //Is it image?
 #define send_image 0
 
 //LED OUTPUT DECLARE
-#define LED A2
+#define LED 10
 
 //Frequency Settings
 #define FREQ00 1040
@@ -42,12 +46,14 @@ Note : Frequency Modulation code
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 //inputString Setup
-const char inputString[LEN] = "hello, its reliable test for very very very very very very very long menchester code";
+const char inputString[LEN] = "The Catholic University of Korea";
+const char ber_string[LEN] = "The Catholic University of Korea";
 
 //128BYTE BOOLEAN-ARRAY to store binary text data
 // bool string_Signal[1024] = {0, }; 
 uint8_t string_Signal[128] = {0, };
 int signal_length = 0;
+char ber_test_signal = 0x1E;
 
 //for sending loop
 int stringIndex = 0;
@@ -70,9 +76,9 @@ const unsigned char PS_128 = (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);
 
 //symbol of start of transmission
 //NOT USING FOR NOW
-bool _symbol_SOT[8] = {0, 0, 0, 0, 0, 1, 1, 0}; // 6
+bool _symbol_SOT[8] = {1, 0, 0, 0, 0, 1, 1, 0}; // 6
 
-bool _symbol_SOT_Control[8] = {0, 0, 0, 0, 0, 1, 0, 1}; // 5
+bool _symbol_SOT_Control[8] = {1, 0, 0, 0, 0, 1, 0, 1}; // 5
 
 // bool _symbol_Control_Forward[8]; // 8
 
@@ -84,7 +90,7 @@ bool _symbol_SOT_Control[8] = {0, 0, 0, 0, 0, 1, 0, 1}; // 5
 
 bool _symbol_Control_ChangeSpeed[8]; // 12
 
-bool _symbol_SOT_Image[8] = {0, 0, 0, 0, 0, 1, 1, 1}; //7
+bool _symbol_SOT_Image[8] = {1, 0, 0, 0, 0, 1, 1, 1}; //7
 
 bool _symbol_EOL_Image[8] = {0, 0, 0, 0, 1, 0, 0, 0}; //8
 
@@ -101,9 +107,18 @@ void setup() {
   pinModeFast(LED, OUTPUT);
   buffer_text();
   //For Debuging=========================================
-  if(debug){
+  if(debug || ber_test){
     Serial.begin(921600);
     Serial.print("start TRANSMISSION \n");
+  }
+  if(debug && ber_test){
+    Serial.println("Debug & BER can't enabled at the same time");
+    while(1);
+  }
+  if(ber_test){
+    buffer_ber_test();
+  }else{
+    buffer_text();
   }
   //For Debuging=========================================
   ADCSRA &= ~PS_128;
@@ -160,6 +175,41 @@ void loop() {
       // _time_started = millis();
       //FOR BENCHMARKING===========================
   }
+}
+
+void buffer_ber_test(){
+  for (int i = 0; i < strlen(ber_string) + SYNCBYTE + 1; i++) {
+    if(i == SYNCBYTE - 1){
+      for (int j = 0; j < 8; j++) {
+        if(_symbol_SOT[7 - j]){
+          bitSet(string_Signal[i], 7-j);
+        }else{
+          bitClear(string_Signal[i], 7-j);
+        }
+      }
+    } else if(i < SYNCBYTE - 1){
+      for (int j = 0; j < 8; j++) {
+          bitClear(string_Signal[i], 7-j);
+      }
+    } else if(i == (strlen(ber_string) + SYNCBYTE)) {
+      for (int j = 0; j < 8; j++) {
+        if(_symbol_EOT[7 - j]){
+          bitSet(string_Signal[i], 7-j);
+        }else{
+          bitClear(string_Signal[i], 7-j);
+        }
+      }
+    } else {
+      for (int j = 0; j < 8; j++){
+        if((ber_string[i - SYNCBYTE] & (0x01 << j)) != 0){
+          bitSet(string_Signal[i], 7-j);
+        }else{
+          bitClear(string_Signal[i], 7-j);
+        }
+      }
+    }
+  }
+  signal_length = (strlen(ber_string) + SYNCBYTE + 1);
 }
 
 void buffer_text(){
@@ -231,7 +281,7 @@ void buffer_control(char control_signal, char is_it_speed = 0){
         }
       }
     }
-  signal_length = (SYNCBYTE + 2) * 8;  
+  signal_length = (SYNCBYTE + 2);  
   }else{
     for (int i = 0; i < 2 + SYNCBYTE + 1; i++) {
       if(i == SYNCBYTE - 1){
@@ -273,7 +323,7 @@ void buffer_control(char control_signal, char is_it_speed = 0){
         }
       }
     }
-  signal_length = (SYNCBYTE + 3) * 8;  
+  signal_length = (SYNCBYTE + 3);  
   }
 }
 
@@ -363,8 +413,7 @@ void buffer_image(){
           bitClear(string_Signal[8*i], 7-j);
         }
       }
-    }
-    else if(i < SYNCBYTE - 1){
+    } else if(i < SYNCBYTE - 1){
       for (int j = 0; j < 8; j++) {
           bitClear(string_Signal[8*i], 7-j);
       }
@@ -405,6 +454,7 @@ void buffer_image(){
       }
     }
   }
+  signal_length = (width + SYNCBYTE + 1);
   location += 1;
 }
 
