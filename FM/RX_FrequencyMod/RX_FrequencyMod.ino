@@ -18,30 +18,36 @@ Ideas for Write BMP to SDCARD
 
 //need DEBUG?
 #define debug 0
+#define STABLE 0
 
 //BER Test Mode
-#define ber_test 1
-
-//use SDCARDS or images?
-#define receive_image 0
+#define ber_test 0
 
 //wanna automatic threshold?
-#define auto_threshold 0
+#define auto_threshold 1
 
 //exponential moving average
-#define exponential 0.97
+#define exponential 0.99
 
 //Photodiode
 #define PD A2
 
 //Sampling Period
-#define SAMPLING_PERIOD 10 //us
+#define SAMPLING_PERIOD 13 //us
 
 //Frequency Settings
-#define FREQ00 1000
-#define FREQ01 1400
-#define FREQ11 1800
-#define FREQ10 2200
+#if STABLE == 0
+  #define FREQ00 400
+  #define FREQ01 800
+  #define FREQ11 1200
+  #define FREQ10 1600
+#else
+  #define FREQ00 1000
+  #define FREQ01 1400
+  #define FREQ11 1800
+  #define FREQ10 2200
+#endif
+#define FREQ_ABORT 2500
 
 //inputString Length
 //!!!!!!!!!!!!!!!CAUTION!!!!!!!!!!!!!!!!!!
@@ -72,6 +78,7 @@ int current_period = 0;
 //Binarys
 bool current_state = 0;
 bool previous_state = 0;
+uint8_t image_state = 0;
 int state = 0;
 
 //PD VALUE
@@ -86,20 +93,12 @@ bool speed_comm = 0;
 
 //for image
 char name[] = "image_0000.bmp";
-int32_t location = 0;
-int32_t dataStartingOffset;
-int32_t width;
-int32_t height;
-int16_t pixelsize;
 File bmpImage;
-unsigned char bmpFileHeader[14] = {'B','M', 0,0,0,0,0,0,0,0,54,0,0,0};
-unsigned char bmpInfoHeader[40] = {40 ,  0, 0,0,0,0,0,0,0,0, 0,0,1,0,24,0};
-uint32_t fileSize = 54 + height * width;
-bool _image_transmitting = 0;
+uint8_t size_divider = 0;
+uint8_t image_index = 0;
 
 //Received values
 char ret = 0;
-char ber_test_signal = 0x1E;
 uint8_t ber_count = 0;
 float ber = 0;
 const char ber_string[LEN] = "The Catholic University of Korea";
@@ -109,6 +108,10 @@ String string_buffer = "";
 
 void setup() {
   Serial.begin(2000000); 
+  if (!SD.begin(10)) {
+    Serial.println("initialization failed!");
+    while (1);
+  }
   pinMode(PD, INPUT);
   //ADC 5kHz to ~2MHz
   ADCSRA &= ~PS_128;
@@ -187,6 +190,11 @@ void get_binary(){
       ret_update(0);
       // delayMicroseconds(10);/
       ret_update(0);
+    }else if((current_period < FREQ_ABORT + boundary)&&(current_period > FREQ_ABORT - boundary)){
+      if(debug){
+        Serial.print(String(voltage) + " / " +String(current_period)+" = ABORT"+"\n");
+      }
+      _exception_comm_ended();
     }else{
       if(debug){
         Serial.print(String(voltage) + " / " +String(current_period)+" = TIMEOUT"+"\n");
@@ -222,21 +230,6 @@ void ret_update(bool temp){
           break;
         }
       }
-      bmpFileHeader[ 2] = (unsigned char)(fileSize      );
-      bmpFileHeader[ 3] = (unsigned char)(fileSize >>  8);
-      bmpFileHeader[ 4] = (unsigned char)(fileSize >> 16);
-      bmpFileHeader[ 5] = (unsigned char)(fileSize >> 24);
-
-      bmpInfoHeader[ 4] = (unsigned char)( width      );
-      bmpInfoHeader[ 5] = (unsigned char)( width >>  8);
-      bmpInfoHeader[ 6] = (unsigned char)( width >> 16);
-      bmpInfoHeader[ 7] = (unsigned char)( width >> 24);
-      bmpInfoHeader[ 8] = (unsigned char)(height      );
-      bmpInfoHeader[ 9] = (unsigned char)(height >>  8);
-      bmpInfoHeader[10] = (unsigned char)(height >> 16);
-      bmpInfoHeader[11] = (unsigned char)(height >> 24);
-      bmpImage.write(bmpFileHeader, sizeof(bmpFileHeader));
-      bmpImage.write(bmpInfoHeader, sizeof(bmpInfoHeader));
     }else if (uint8_t(buffer) == 132 && (!ber_test)) {
       state = 2;
       ret = 0;
@@ -249,7 +242,6 @@ void ret_update(bool temp){
     bitIndex += 1;
     if(bitIndex == 8){
       if(ret == 4){
-        Serial.print(String(voltage) + " " + String(current_period) + " || " + state + " " + "RECEIVING BITS || " + string_buffer + "\n");
         _exception_comm_ended();
         if(ber_test){ 
           Serial.println("BER was " + String((1.0 - ber/strlen(ber_string))));
@@ -322,23 +314,19 @@ void ret_update(bool temp){
   }else if (state == 3){
     ret = ret | temp << 7-bitIndex;
     bitIndex += 1;
-    if(bitIndex == 8){
-      if(ret == 4){
-        location = 0;
-        bmpImage.close();
-        _exception_comm_ended();
-      }else if(ret == 8){
-        location = 0;
-        Serial.println("END OF WIDTH IMAGE");
-        _exception_comm_ended();
-      } else {
-        bmpImage.write(&ret, 1);
-        bitIndex = 0;
-        ret = 0;
-        location += 1;
-        Serial.print(String(voltage) + " " + String(current_period) + " || " + state + " " + "RECEIVING IMAGES || " + string_buffer + "\n");
-        if(location > width){
-          _exception_comm_failed();
+    if(bitIndex == 6){
+      if(image_state == 0){
+        size_divider = ret;
+        image_state = 1;
+      }else if(image_state == 1){
+        image_index = ret;
+        image_state = 2;
+      }else{
+        if(size_divider == image_index){
+          bmpImage.write(&ret, 1);
+          bitIndex = 0;
+          ret = 0;
+          Serial.print(String(voltage) + " " + String(current_period) + " || " + state + " " + "RECEIVING IMAGES || " + string_buffer + "\n");
         }
       }
     }
@@ -370,9 +358,19 @@ void _exception_comm_failed(){
 }
 
 void _exception_comm_ended(){
+  Serial.print(String(voltage) + " " + String(current_period) + " || " + state + " " + "RECEIVING BITS || " + string_buffer + "\n");
   ret = 0;
   state = 0;
   bitIndex = 0;
   string_buffer = "";
+  if(image_state){
+    if(size_divider == (image_index + 1)){
+      bmpImage.close();
+      size_divider = 0;
+    }else{
+      image_index += 1;
+    }
+    image_state = 0;
+  }
   Serial.println("END OF TRANSMISSION");
 }

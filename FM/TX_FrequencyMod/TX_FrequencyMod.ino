@@ -14,22 +14,32 @@ Note : Frequency Modulation code
 #include <SD.h>
 
 //NEED DEBUG?
-#define debug 0
+#define debug 1
+#define STABLE 0
 
 //BER Test Mode
 #define ber_test 0
 
 //Is it image?
-#define send_image 0
+#define send_image 1
 
 //LED OUTPUT DECLARE
-#define LED 10
+#define LED A2
 
 //Frequency Settings
-#define FREQ00 1040
-#define FREQ01 1440
-#define FREQ11 1840
-#define FREQ10 2240
+#if STABLE == 0
+  #define FREQ00 400
+  #define FREQ01 800
+  #define FREQ11 1200
+  #define FREQ10 1600
+#else
+  #define FREQ00 1000
+  #define FREQ01 1400
+  #define FREQ11 1800
+  #define FREQ10 2200
+#endif
+#define FREQ_ABORT 2500
+
 
 //SYNCBYTE before transmission start
 //Minimum 1
@@ -48,25 +58,28 @@ Note : Frequency Modulation code
 //inputString Setup
 const char inputString[LEN] = "The Catholic University of Korea";
 const char ber_string[LEN] = "The Catholic University of Korea";
+const char image[] PROGMEM = "Qk02GwAAAAAAADYAAAAoAAAAMAAAADAAAAABABgAAAAAAAAbAAAAAAAAAAAAAAAAAAAAAAAApEmjpEmjpEmjJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztJBzt6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIApEmjpEmjpEmjJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztJBzt6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA////pEmjpEmjpEmjJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztJBzt6KIA6KIA6KIA6KIAAPL/6KIA6KIA6KIA6KIA6KIA6KIAAPL/6KIA6KIAAPL/6KIA6KIAAPL/6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA////////pEmjpEmjpEmjpEmjJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztJBzt6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA////pEmjpEmjpEmjpEmjJBztJBztJBztJBztJBztJBztJBztJBzt////JBztJBztJBztJBztJBztJBzt6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIAAPL/6KIAAPL/6KIA6KIATLEi6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIApEmjpEmjpEmjpEmjJBztJBztpEmjJBztJBztJBztJBztJBztJBzt////JBztJBztJBztJBztJBztJBzt6KIAAPL/6KIA6KIA6KIA6KIA6KIA6KIAAPL/TLEi6KIATLEiTLEiTLEiTLEiTLEi6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIApEmjpEmjpEmjpEmjpEmjJBztJBztJBztJBztJBztJBztJBzt////////JBztJBztJBztJBztJBztJBztAPL/APL/6KIAAPL/APL/APL/APL/APL/APL/TLEiTLEiTLEiTLEiTLEiTLEiTLEi6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIApEmjpEmjpEmjpEmjpEmjpEmjpEmjJBztJBztJBztJBztpEmjJBztJBztJBztJBztJBztJBztJBztAPL/APL/APL/APL/APL/APL/APL/APL/APL/TLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEi6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIApEmjpEmjpEmjpEmjpEmjJBztJBztJBztJBztJBztJBztpEmjJBztJBztJBztJBztJBztJBztJBztAPL/APL/APL/APL/APL/APL/APL/APL/APL/TLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEi6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIApEmjpEmjpEmjpEmjpEmjpEmjJBztJBztJBztJBztJBztJBztpEmjJBztJBztJBztJBztJBztJBztAPL/APL/APL/APL/APL/APL/APL/APL/APL/////TLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEi6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIApEmjpEmjpEmjpEmjpEmjpEmjpEmjJBztJBztJBztpEmjJBztJBztJBztJBztJBzt////JBztJBztJBztAPL/APL/APL/APL/APL/APL/APL/////TLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEi6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA////pEmjpEmjpEmjpEmjpEmjpEmjJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztAPL/APL/APL/APL/APL/APL/APL/APL/////TLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEi6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA////pEmjpEmjpEmjpEmjpEmjpEmjpEmjJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztAPL/APL/APL/APL/APL/APL/APL/APL/APL/////TLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEi6KIA6KIA6KIA6KIA6KIA6KIA6KIA////////pEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjJBztJBztJBztJBztJBztJBztJBztJBzt////JBztJBztJBztAPL/APL/APL/APL/APL/APL/APL/APL/////TLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEi6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIApEmjpEmjpEmjpEmjpEmj////pEmjpEmjpEmjJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztAPL/APL/APL/APL/APL/APL/APL/APL/TLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEi6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIApEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjJBztJBztJBztJBztJBztJBztJBztJBztJBzt////JBztJBztAPL/APL/APL/APL/APL/APL/APL/APL/TLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEi6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIApEmjpEmjpEmjpEmjpEmjpEmjpEmj////JBztJBztJBztJBztpEmjJBztJBztJBztJBztJBztJBztJBztAPL/APL/APL/APL/APL/APL/APL/APL/TLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEi6KIA6KIA6KIA6KIA6KIA6KIA6KIA////pEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztAPL/APL/APL/APL/APL/APL/APL/TLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEi6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIApEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztAPL/APL/APL/APL/APL/APL/APL/TLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEi6KIA6KIA6KIA6KIA6KIA////6KIAk0CgpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztpEmjJBztAPL/APL/APL/APL/APL/APL/TLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEipEmj6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIApEmjpEmjpEmjpEmjpEmjpEmjJBztpEmjpEmjfXn1JBztJBztJBztJBztJBztJBztJBztJBztJBzt////JBzt////////APL/APL/APL/APL/APL/TLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEi6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIApEmjpEmjpEmjpEmjpEmjpEmjOTHvJBztpEmjpEmjJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztJBzt////h/j/APL/APL/APL/TLEiAPL/TLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiAPL/TLEiTLEiTLEi6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIAFQCIpEmj////pEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjJBztJBztpEmjJBztJBztJBztJBztJBztJBztJBztJBztAPL/APL/APL/APL/APL/APL/APL/TLEiTLEiTLEiTLEiTLEiTLEiTLEiAPL/TLEiTLEiTLEi6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIAFQCIpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjJBztJBztJBztJBztJBztJBztJBztJBztJBztJBzt////APL/APL/APL/APL/APL/APL/APL/TLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEi6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIApEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjJBztJBztJBztJBztJBztJBztJBztJBztJBztJBzt////GPP/APL/APL/APL/APL/APL/TLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEizEg/TLEi6KIA6KIA6KIA6KIA6KIA6KIA6KIAFQCIpEmjpEmjpEmjpEmjpEmjpEmj////pEmjpEmjpEmjJBztpEmjJBztJBztJBztJBztJBztJBztJBzt////JBztt/v/APL/APL/APL/APL/APL/TLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEi6KIA6KIA6KIA6KIA6KIA6KIA6KIApEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjOTHvJBztJBztJBztJBztJBztJBztJBztJBztJBztJ3//JBztJBzt////APL/APL/APL/APL/APL/TLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEi6KIA6KIA6KIA6KIA6KIA6KIA6KIAFQCIpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjJBztJBztJBztJBztJBztJBztJBztJBztJBztJBzt////APL/APL/APL/APL/APL/APL/TLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEi6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIAKxiTpEmjFQCIZlixpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjJBztJBztJBztJBztJBztJBztJBztJBztJ3//JBzt////APL/APL/APL/APL/APL/APL/TLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEi6KIA6KIA6KIA6KIA6KIA6KIA6KIAoJfOpEmjFQCIpEmjpEmj////pEmj////pEmj////pEmjJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztJBzt////t/v/APL/APL/APL/APL/APL/TLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEizEg/6KIA6KIA6KIA6KIA6KIA6KIA6KIA////FQCIpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjJBztpEmjpEmjJBztJBztJBztJBztJBztJBztJBztJBzt////////APL/APL/APL/Xbg3APL/TLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEi6KIA6KIA6KIA6KIA6KIA6KIA6KIApEmjKxiTpEmjpEmjpEmj////pEmj////pEmjpEmjpEmjpEmjJBztpEmjJBztJBztJBztJBztJBztJBztJBztJBzt////////APL/APL/APL/APL/APL/TLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEi////TLEiTLEi6KIA6KIA6KIA6KIA6KIA6KIA6KIA////pEmjFQCIpEmjpEmjpEmjpEmj////pEmjpEmjpEmjpEmjpEmjJBztJBztJBztJBztJBztJBztJBztJBztJBztJBzt////APL/APL/APL/APL/APL/APL/APL/TLEiTLEiTLEiTLEiAPL/TLEiTLEiTLEiTLEiTLEi6KIA6KIA6KIA6KIA6KIA////6KIApEmjpEmjpEmjFQCIpEmjpEmj////pEmjpEmjpEmj////pEmjJBztJBztpEmjJBztJBztJBztJBztJBztJBztJBztJBztJBztl/n/APL/APL/APL/APL/APL/APL/TLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEi6KIA6KIA6KIA6KIA6KIA6KIA////pEmjpEmjpEmjpEmjpEmj////////////pEmjpEmjpEmjpEmjpEmjJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztAPL/APL/APL/APL/APL/APL/TLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEi6KIA6KIA6KIA6KIA6KIA6KIA6KIApEmjpEmjpEmjpEmjpEmjpEmj////pEmjpEmjpEmjpEmjpEmjpEmjpEmjJBztJBztJBztJBztJBztJBztJBztJBztJBzt////////APL/APL/APL/APL/APL/TLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEi6KIA6KIA6KIA6KIA6KIA6KIA6KIApEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjJBztJBztJBztJBztJBztJBztJBztJBztJBzt////APL/APL/APL/APL/APL/TLEiAPL/TLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEi6KIA6KIA6KIA6KIA6KIA6KIA6KIApEmj////pEmjpEmjpEmjpEmjpEmj////pEmjpEmjpEmjpEmjpEmjpEmjpEmjJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztAPL/APL/APL/APL/APL/APL/TLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEi6KIA6KIA6KIA6KIA6KIA6KIA6KIA////pEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztAPL/APL/APL/APL/APL/APL/APL/TLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEi6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIApEmjpEmjpEmjpEmjpEmjpEmjpEmj////pEmjpEmjpEmjpEmjpEmjpEmjJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztAPL/APL/APL/APL/APL/APL/APL/TLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEiTLEi6KIA6KIA6KIA6KIA6KIA6KIA6KIApEmjpEmjpEmjpEmjpEmjpEmj////pEmjpEmjpEmjpEmjpEmjpEmjpEmjJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztAPL/APL/APL/APL/APL/APL/APL/APL/TLEiTLEiTLEiTLEiTLEiTLEiTLEi6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIApEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztAPL/APL/APL/APL/APL/APL/APL/APL/APL/TLEiTLEiTLEiTLEiTLEiTLEiTLEi6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA////pEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztAPL/APL/APL/APL/APL/APL/APL/APL/APL/APL/TLEiTLEiTLEiTLEiTLEi6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIApEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjJBztJBztJBzt////JBztJBztJBztJBztJBztJBztJBztAPL/APL/APL/APL/APL/APL/APL/APL/APL/APL/TLEiTLEiTLEiTLEiTLEi6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIApEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjJBztJBztJBztJBzt////JBztJBztJBztJBztJBztJBztAPL/APL/APL/APL/APL/APL/APL/APL/APL/APL/TLEiTLEiTLEiTLEiTLEi6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA6KIA////pEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjpEmjJBztJBztJBztJBztJBztJBzt////JBztJBztJBztJBztJBztAPL/APL/APL/APL/APL/APL/APL/APL/APL/TLEiTLEiTLEiTLEiTLEiTLEi6KIA6KIA6KIA6KIA6KIA6KIA6KIA////pEmjpEmjpEmjpEmj////pEmjpEmj////pEmjpEmjpEmjpEmjpEmjpEmjpEmjJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztJBztAPL/APL/APL/APL/APL/APL/APL/APL/TLEiTLEiTLEiTLEiTLEi6KIA6KIA6KIA6KIA6KIA6KIA6KIA////////////pEmjpEmjpEmjpEmjpEmj////pEmjpEmjpEmjpEmjpEmjpEmjpEmjJBztJBztJBztJBztJBzt////////JBztJBztJBztJBztJBztJBztAPL/APL/APL/APL/APL/APL/APL/APL/TLEiTLEiTLEiTLEiTLEi6KIA6KIA6KIA6KIA6KIA////////";
 
 //128BYTE BOOLEAN-ARRAY to store binary text data
 // bool string_Signal[1024] = {0, }; 
-uint8_t string_Signal[128] = {0, };
+uint8_t string_Signal[550] = {0, };
 int signal_length = 0;
 char ber_test_signal = 0x1E;
+uint16_t block_size = 0;
 
 //for sending loop
 int stringIndex = 0;
 uint8_t bitIndex = 0;
 bool toggle = 0;
+bool image_state = 0;
+uint8_t image_index = 0;
+byte Grayscale;
+// File bmpImage;
 
 //for image
-int32_t location = 0;
-int32_t dataStartingOffset;
-int32_t width;
-int32_t height;
-int16_t pixelsize;
-File bmpImage;
+int16_t size;
+uint8_t size_divider = 0;
+uint16_t size_divider_n = 0;
 
 // Define various ADC prescaler 
 const unsigned char PS_16 = (1 << ADPS2); 
@@ -105,10 +118,15 @@ bool _symbol_EOT[8] = {0, 0, 0, 0, 0, 1, 0, 0}; // 4
 
 void setup() {
   pinModeFast(LED, OUTPUT);
-  buffer_text();
+  // if (!SD.begin(10)) {
+  //   Serial.println("initialization failed!");
+  //   while (1);
+  // }
+  // File bmpImage = SD.open("picture.bmp",FILE_READ);
+  // size = bmpImage.size();
   //For Debuging=========================================
   if(debug || ber_test){
-    Serial.begin(921600);
+    Serial.begin(2000000);
     Serial.print("start TRANSMISSION \n");
   }
   if(debug && ber_test){
@@ -117,6 +135,8 @@ void setup() {
   }
   if(ber_test){
     buffer_ber_test();
+  }else if(send_image){
+    buffer_image();
   }else{
     buffer_text();
   }
@@ -131,37 +151,29 @@ void loop() {
   if(bitRead(string_Signal[stringIndex], bitIndex)){
     if(bitRead(string_Signal[stringIndex], bitIndex + 1)){
       write_11();
-      if(debug){
-        Serial.println("11");
-      }
     }else{
       write_10();
-      if(debug){
-        Serial.println("10");
-      }
     }
   }else{
     if(bitRead(string_Signal[stringIndex], bitIndex + 1)){
       write_01();
-      if(debug){
-        Serial.println("01");
-      }
     }else{
       write_00();
-      if(debug){
-        Serial.println("00");
-      }
     }
   }
   bitIndex += 2;
   if(bitIndex == 8){
     bitIndex = 0;
     stringIndex += 1;
-    if(debug){
-      Serial.println("1 Byte sent ");
-    }
   }
-  if(stringIndex >= signal_length) {
+  if(stringIndex >= signal_length - 1) {
+      _exception_comm_ended();
+      if(send_image){
+        buffer_image();
+      }
+      if(debug){
+        Serial.println("512 Byte sent " + String(image_index));
+      }
       stringIndex = 0;
       //FOR BENCHMARKING===========================
       // _time_ended = millis();
@@ -337,9 +349,6 @@ void write_00(){
     }
     toggle = !toggle;
   }
-  if(debug){
-    Serial.print(String(FREQ00) + "\n");
-  }
 }
 
 void write_01(){
@@ -351,9 +360,6 @@ void write_01(){
       digitalWriteFast(LED, 0);
     }
     toggle = !toggle;
-  }
-  if(debug){
-    Serial.print(String(FREQ01) + "\n");
   }
 }
 
@@ -367,9 +373,6 @@ void write_10(){
     }
     toggle = !toggle;
   }
-  if(debug){
-    Serial.print(String(FREQ10) + "\n");
-  }
 }
 
 void write_11(){
@@ -382,94 +385,87 @@ void write_11(){
     }
     toggle = !toggle;
   }
-  if(debug){
-    Serial.print(String(FREQ11) + "\n");
+}
+
+void _exception_comm_ended(){
+  for(int i = 0; i < DURATION; i++){
+    delayMicroseconds(FREQ_ABORT);
+    if(toggle){
+      digitalWriteFast(LED, 1);
+    }else{
+      digitalWriteFast(LED, 0);
+    }
+    toggle = !toggle;
   }
 }
 
 void buffer_image(){
-  if(location != 0){
-    bmpImage = SD.open("image.bmp" ,FILE_READ);
-    dataStartingOffset = readNbytesInt(&bmpImage, 0x0A, 4);
-    width = readNbytesInt(&bmpImage, 0x12, 4);
-    height = readNbytesInt(&bmpImage, 0x16, 4);
-    pixelsize = readNbytesInt(&bmpImage, 0x1C, 2);
+  if(!image_state){
+    size = strlen(image);
+    image_index = 0;
+    image_state = 1;
   }
 
-  if(pixelsize != 24){
-    Serial.println("Exception has occured || 24bpp");
-    while(1);
+  // bmpImage.seek( );
+  if(size > 512){
+    size_divider = size / 512 + 1;
+    size_divider_n = size % 512;
+  }
+  
+  if(size_divider == image_index + 1){
+    block_size = size_divider_n;
+    image_state = 0;
+  }else{
+    block_size = 512;
   }
 
-  uint8_t B, G, R;
-  uint8_t Grayscale; 
-
-  for (int32_t i = 0; i < width + SYNCBYTE + 1; i++) {
+  for (uint16_t i = 0; i < block_size + SYNCBYTE + 3; i++) {
     if(i == SYNCBYTE - 1){
       for (int j = 0; j < 8; j++) {
-        if(_symbol_SOT[7 - j]){
-          bitSet(string_Signal[8*i], 7-j);
+        if(_symbol_SOT_Image[7 - j]){
+          bitSet(string_Signal[i], 7-j);
         }else{
-          bitClear(string_Signal[8*i], 7-j);
+          bitClear(string_Signal[i], 7-j);
+        }
+      }
+    } else if(i == SYNCBYTE){
+      for (int j = 0; j < 8; j++) {
+        if(bitRead(size_divider, 7-j)){
+          bitSet(string_Signal[i], 7-j);
+        }else{
+          bitClear(string_Signal[i], 7-j);
+        }
+      }
+    }else if(i == SYNCBYTE + 1){
+      for (int j = 0; j < 8; j++) {
+        if(bitRead(image_index, 7-j)){
+          bitSet(string_Signal[i], 7-j);
+        }else{
+          bitClear(string_Signal[i], 7-j);
         }
       }
     } else if(i < SYNCBYTE - 1){
       for (int j = 0; j < 8; j++) {
-          bitClear(string_Signal[8*i], 7-j);
+          bitClear(string_Signal[i], 7-j);
       }
-    } else if(i == (width + SYNCBYTE)){
-      if(location == height - 1){
-        for (int j = 0; j < 8; j++) {
-          if(_symbol_EOT[7 - j]){
-            bitSet(string_Signal[8*i], 7-j);
-          }else{
-            bitClear(string_Signal[8*i], 7-j);
-          }
-          bmpImage.close();
-          location = 0;
-        }
-      }else{
-        for (int j = 0; j < 8; j++) {
-          if(_symbol_EOL_Image[7 - j]){
-            bitSet(string_Signal[8*i], 7-j);
-          }else{
-            bitClear(string_Signal[8*i], 7-j);
-          }
-        }
-      }
-    } else {
-      B = bmpImage.read();
-      G = bmpImage.read();
-      R = bmpImage.read();
-      Grayscale = B / 10 + G / 2 + R / 3;
-      if((Grayscale == 4) || (Grayscale == 8)){
-        Grayscale += 1;
-      }
+    } else if(i == (512 + SYNCBYTE + 2)){
       for (int j = 0; j < 8; j++) {
-        if(bitRead(Grayscale, 7-j)){
-          bitSet(string_Signal[8*i], 7-j);
+        if(_symbol_EOT[7 - j]){
+          bitSet(string_Signal[i], 7-j);
         }else{
-          bitClear(string_Signal[8*i], 7-j);
+          bitClear(string_Signal[i], 7-j);
+        }
+      }
+      image_index += 1;
+    } else {
+      for (int j = 0; j < 8; j++) {
+        if(bitRead(image[image_index * 512 + i - SYNCBYTE - 2], 7-j)){
+          bitSet(string_Signal[i], 7-j);
+        }else{
+          bitClear(string_Signal[i], 7-j);
         }
       }
     }
   }
-  signal_length = (width + SYNCBYTE + 1);
-  location += 1;
-}
-
-int32_t readNbytesInt(File *p_file, int position, byte nBytes){
-  //can't exceed 4bytes
-  //assumes 24bpp BMP
-    if (nBytes > 4)
-        return 0;
-    p_file->seek(position);
-
-    int32_t weight = 1;
-    int32_t result = 0;
-    for (; nBytes; nBytes--){
-        result += weight * p_file->read();
-        weight <<= 8;
-    }
-    return result;
+  signal_length = (block_size + SYNCBYTE + 3);
 }
