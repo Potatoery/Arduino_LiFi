@@ -41,14 +41,14 @@ Ideas for Write BMP to SDCARD
   #define FREQ01 800
   #define FREQ11 1200
   #define FREQ10 1600
+  #define FREQ_ABORT 2000
 #else
   #define FREQ00 1000
   #define FREQ01 1400
   #define FREQ11 1800
   #define FREQ10 2200
+  #define FREQ_ABORT 2600
 #endif
-#define FREQ_ABORT 2400
-#define FREQ_START 2800
 
 //inputString Length
 //!!!!!!!!!!!!!!!CAUTION!!!!!!!!!!!!!!!!!!
@@ -98,7 +98,7 @@ char name[] = "image_0000.bmp";
 File bmpImage;
 uint8_t size_divider = 0;
 uint8_t image_index = 0;
-uint8_t location = 0;
+uint8_t location = 1;
 
 //Received values
 char ret = 0;
@@ -107,18 +107,18 @@ float ber = 0;
 const char ber_string[LEN] = "The Catholic University of Korea";
 char buffer = 0;
 bool control_buffer[24] = {0, };
-String string_buffer = "";
 uint8_t image_buffer[550] = {0, };
+String string_buffer = "";
 
 void setup() {
   Serial.begin(2000000);
   pinMode(3, OUTPUT);
   digitalWrite(3, 1);
   __init__(); 
-  // if (!SD.begin(10)) {
-  //   Serial.println("initialization failed!");
-  //   while (1);
-  // }
+  if (!SD.begin(10)) {
+    Serial.println("initialization failed!");
+    while (1);
+  }
   pinMode(PD, INPUT);
   //ADC 5kHz to ~2MHz
   ADCSRA &= ~PS_128;
@@ -204,11 +204,6 @@ void get_binary(){
         Serial.print(String(voltage) + " / " +String(current_period)+" = ABORT"+"\n");
       }
       _exception_comm_ended();
-    // }else if((current_period < FREQ_START + boundary)&&(current_period > FREQ_START - boundary)){
-    //   if(debug){
-    //     Serial.print(String(voltage) + " / " +String(current_period)+" = START"+"\n");
-    //   }
-    //   _exception_comm_started();
     }else{
       if(debug){
         Serial.print(String(voltage) + " / " +String(current_period)+" = TIMEOUT"+"\n");
@@ -323,7 +318,7 @@ void ret_update(bool temp){
         bitIndex = 0;
         ret = 0;
       }else{
-        // bmpImage.write(&ret, 1);
+        bmpImage.write(&ret, 1);
         image_buffer[image_byte_count] = ret;
         bitIndex = 0;
         ret = 0;
@@ -374,9 +369,10 @@ void _exception_comm_ended(){
   bitIndex = 0;
   string_buffer = "";
   if(image_state == 2){
-    if(size_divider == (location + 1)){
+    if(size_divider == (location)){
       bmpImage.close();
       size_divider = 0;
+      location = 1;
     }else{
       location += 1;
     }

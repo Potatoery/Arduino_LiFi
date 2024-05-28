@@ -32,15 +32,14 @@ Note : Frequency Modulation code
   #define FREQ01 840
   #define FREQ11 1240
   #define FREQ10 1640
+  #define FREQ_ABORT 2040
 #else
   #define FREQ00 1040
   #define FREQ01 1440
   #define FREQ11 1840
   #define FREQ10 2240
+  #define FREQ_ABORT 2640
 #endif
-#define FREQ_ABORT 2440
-#define FREQ_START 2840
-
 
 //SYNCBYTE before transmission start
 //Minimum 1
@@ -57,7 +56,7 @@ Note : Frequency Modulation code
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 //inputString Setup
-const char inputString[LEN] = "A veryyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy Message";
+const char inputString[LEN] = "A veryyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy long Message";
 const char ber_string[LEN] = "The Catholic University of Korea";
 const uint8_t image[] PROGMEM = 
 { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
@@ -306,7 +305,7 @@ void loop() {
       if(send_image){
         buffer_image();
       }
-      if(debug){
+      if(debug && send_image){
         Serial.println("512 Byte sent " + String(image_index) + " " + String(size_divider));
       }
       stringIndex = 0;
@@ -546,17 +545,17 @@ void _exception_comm_ended(){
   }
 }
 
-void _exception_comm_started(){
-  for(int i = 0; i < DURATION; i++){
-    delayMicroseconds(FREQ_START);
-    if(toggle){
-      digitalWriteFast(LED, 1);
-    }else{
-      digitalWriteFast(LED, 0);
-    }
-    toggle = !toggle;
-  }
-}
+// void _exception_comm_started(){
+//   for(int i = 0; i < DURATION; i++){
+//     delayMicroseconds(FREQ_START);
+//     if(toggle){
+//       digitalWriteFast(LED, 1);
+//     }else{
+//       digitalWriteFast(LED, 0);
+//     }
+//     toggle = !toggle;
+//   }
+// }
 
 void buffer_image(){
   if(!image_state){
