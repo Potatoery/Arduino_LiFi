@@ -18,18 +18,16 @@ Ideas for Write BMP to SDCARD
 
 //need DEBUG?
 #define debug 0
+#define STABLE 0
 
 //BER Test Mode
 #define ber_test 1
 
-//use SDCARDS or images?
-#define receive_image 0
-
 //wanna automatic threshold?
-#define auto_threshold 0
+#define auto_threshold 1
 
 //exponential moving average
-#define exponential 0.97
+#define exponential 0.98
 
 //Photodiode
 #define PD A2
@@ -38,10 +36,19 @@ Ideas for Write BMP to SDCARD
 #define SAMPLING_PERIOD 10 //us
 
 //Frequency Settings
-#define FREQ00 1000
-#define FREQ01 1400
-#define FREQ11 1800
-#define FREQ10 2200
+#if STABLE == 0
+  #define FREQ00 400
+  #define FREQ01 800
+  #define FREQ11 1200
+  #define FREQ10 1600
+#else
+  #define FREQ00 1000
+  #define FREQ01 1400
+  #define FREQ11 1800
+  #define FREQ10 2200
+#endif
+#define FREQ_ABORT 2400
+#define FREQ_START 2800
 
 //inputString Length
 //!!!!!!!!!!!!!!!CAUTION!!!!!!!!!!!!!!!!!!
@@ -72,6 +79,7 @@ int current_period = 0;
 //Binarys
 bool current_state = 0;
 bool previous_state = 0;
+uint8_t image_state = 0;
 int state = 0;
 
 //PD VALUE
@@ -80,35 +88,37 @@ int voltage;
 //for IDEA Develop
 int8_t bitIndex = 0;
 int temp;
+uint16_t image_byte_count = 0;
 
 //car control values
 bool speed_comm = 0;
 
 //for image
 char name[] = "image_0000.bmp";
-int32_t location = 0;
-int32_t dataStartingOffset;
-int32_t width;
-int32_t height;
-int16_t pixelsize;
 File bmpImage;
-unsigned char bmpFileHeader[14] = {'B','M', 0,0,0,0,0,0,0,0,54,0,0,0};
-unsigned char bmpInfoHeader[40] = {40 ,  0, 0,0,0,0,0,0,0,0, 0,0,1,0,24,0};
-uint32_t fileSize = 54 + height * width;
-bool _image_transmitting = 0;
+uint8_t size_divider = 0;
+uint8_t image_index = 0;
+uint8_t location = 0;
 
 //Received values
 char ret = 0;
-char ber_test_signal = 0x1E;
 uint8_t ber_count = 0;
 float ber = 0;
 const char ber_string[LEN] = "The Catholic University of Korea";
 char buffer = 0;
 bool control_buffer[24] = {0, };
 String string_buffer = "";
+uint8_t image_buffer[550] = {0, };
 
 void setup() {
-  Serial.begin(2000000); 
+  Serial.begin(2000000);
+  pinMode(3, OUTPUT);
+  digitalWrite(3, 1);
+  __init__(); 
+  // if (!SD.begin(10)) {
+  //   Serial.println("initialization failed!");
+  //   while (1);
+  // }
   pinMode(PD, INPUT);
   //ADC 5kHz to ~2MHz
   ADCSRA &= ~PS_128;
@@ -130,6 +140,8 @@ void loop() {
     current_time = micros();
     //get current_time - last_time
     current_period = get_period();
+    //Check Violation
+    if((current_period) > 3000 && state != 0){ Serial.println("result not confident"); }
     //update received values
     get_binary();
     //now update last_time to current_time
@@ -187,6 +199,16 @@ void get_binary(){
       ret_update(0);
       // delayMicroseconds(10);/
       ret_update(0);
+    }else if((current_period < FREQ_ABORT + boundary)&&(current_period > FREQ_ABORT - boundary)){
+      if(debug){
+        Serial.print(String(voltage) + " / " +String(current_period)+" = ABORT"+"\n");
+      }
+      _exception_comm_ended();
+    // }else if((current_period < FREQ_START + boundary)&&(current_period > FREQ_START - boundary)){
+    //   if(debug){
+    //     Serial.print(String(voltage) + " / " +String(current_period)+" = START"+"\n");
+    //   }
+    //   _exception_comm_started();
     }else{
       if(debug){
         Serial.print(String(voltage) + " / " +String(current_period)+" = TIMEOUT"+"\n");
@@ -213,31 +235,8 @@ void ret_update(bool temp){
       ret = 0;
       buffer = 0;
       Serial.println("START OF IMAGE TRANSMISSION");
-      for (int i=0; i<10000; i++) {
-        name[6] = (i/1000)%10 + '0';    // thousands place
-        name[7] = (i/100)%10 + '0';     // hundreds
-        name[8] = (i/10)%10 + '0';      // tens
-        name[9] = i%10 + '0';           // ones
-        if (SD.open(name, O_CREAT | O_EXCL | O_WRITE)) {
-          break;
-        }
-      }
-      bmpFileHeader[ 2] = (unsigned char)(fileSize      );
-      bmpFileHeader[ 3] = (unsigned char)(fileSize >>  8);
-      bmpFileHeader[ 4] = (unsigned char)(fileSize >> 16);
-      bmpFileHeader[ 5] = (unsigned char)(fileSize >> 24);
-
-      bmpInfoHeader[ 4] = (unsigned char)( width      );
-      bmpInfoHeader[ 5] = (unsigned char)( width >>  8);
-      bmpInfoHeader[ 6] = (unsigned char)( width >> 16);
-      bmpInfoHeader[ 7] = (unsigned char)( width >> 24);
-      bmpInfoHeader[ 8] = (unsigned char)(height      );
-      bmpInfoHeader[ 9] = (unsigned char)(height >>  8);
-      bmpInfoHeader[10] = (unsigned char)(height >> 16);
-      bmpInfoHeader[11] = (unsigned char)(height >> 24);
-      bmpImage.write(bmpFileHeader, sizeof(bmpFileHeader));
-      bmpImage.write(bmpInfoHeader, sizeof(bmpInfoHeader));
-    }else if (uint8_t(buffer) == 132 && (!ber_test)) {
+      while (!SD.open(name, O_CREAT | O_EXCL | O_WRITE));
+    }else if (uint8_t(buffer) == 143 && (!ber_test)) {
       state = 2;
       ret = 0;
       buffer = 0;
@@ -248,15 +247,7 @@ void ret_update(bool temp){
     ret = ret | temp << 7-bitIndex;
     bitIndex += 1;
     if(bitIndex == 8){
-      if(ret == 4){
-        Serial.print(String(voltage) + " " + String(current_period) + " || " + state + " " + "RECEIVING BITS || " + string_buffer + "\n");
-        _exception_comm_ended();
-        if(ber_test){ 
-          Serial.println("BER was " + String((1.0 - ber/strlen(ber_string))));
-          ber_count = 0; 
-          ber = 0;
-        }
-      } else if((ret < 31) | (ret > 127)){
+      if((ret < 31) | (ret > 127)){
         if(ret == 0xFF){
                 ret = 0;
         }else{
@@ -282,14 +273,12 @@ void ret_update(bool temp){
     bitIndex += 1;
     if(bitIndex == 8){
       if(speed_comm){
-        changeSpeed(int(ret));
+        //changeSpeed(int(ret));
         speed_comm = 0;
         ret = 0;
         bitIndex = 0;
       }else{
-        if(ret == 4){
-        _exception_comm_ended();
-        }else if(ret == 8){
+        if(ret == 8){
           forward();
           ret = 0;
           bitIndex = 0;
@@ -298,11 +287,11 @@ void ret_update(bool temp){
           ret = 0;
           bitIndex = 0;
         }else if(ret == 10){
-          rotate(0);
+          //rotate(0);
           ret = 0;
           bitIndex = 0;
         }else if(ret == 11){
-          rotate(1);
+          //rotate(1);
           ret = 0;
           bitIndex = 0;
         }else if(ret == 12){
@@ -323,24 +312,23 @@ void ret_update(bool temp){
     ret = ret | temp << 7-bitIndex;
     bitIndex += 1;
     if(bitIndex == 8){
-      if(ret == 4){
-        location = 0;
-        bmpImage.close();
-        _exception_comm_ended();
-      }else if(ret == 8){
-        location = 0;
-        Serial.println("END OF WIDTH IMAGE");
-        _exception_comm_ended();
-      } else {
-        bmpImage.write(&ret, 1);
+      if(image_state == 0){
+        size_divider = uint8_t(ret);
+        image_state = 1;
         bitIndex = 0;
         ret = 0;
-        location += 1;
-        Serial.print(String(voltage) + " " + String(current_period) + " || " + state + " " + "RECEIVING IMAGES || " + string_buffer + "\n");
-        if(location > width){
-          _exception_comm_failed();
-        }
+      }else if(image_state == 1){
+        image_index = uint8_t(ret);
+        image_state = 2;
+        bitIndex = 0;
+        ret = 0;
+      }else{
+        // bmpImage.write(&ret, 1);
+        image_buffer[image_byte_count] = ret;
+        bitIndex = 0;
+        ret = 0;
       }
+      image_byte_count++;
     }
   }
 }
@@ -370,9 +358,29 @@ void _exception_comm_failed(){
 }
 
 void _exception_comm_ended(){
+  if(state == 1){
+    Serial.print(String(voltage) + " " + String(current_period) + " || " + String(state) + " " + "RECEIVING BITS || " + String(string_buffer) + "\n");
+    if(ber_test){ 
+      Serial.println("BER was " + String((1.0 - ber/strlen(ber_string))));
+      ber_count = 0; 
+      ber = 0;
+    }
+  }else if(state == 3){
+    Serial.println(String(uint8_t(size_divider)) + " " + String(uint8_t(location)) + " " + String(uint8_t(image_index)) + " " + String(image_byte_count));
+    image_byte_count = 0;
+  }
   ret = 0;
   state = 0;
   bitIndex = 0;
   string_buffer = "";
+  if(image_state == 2){
+    if(size_divider == (location + 1)){
+      bmpImage.close();
+      size_divider = 0;
+    }else{
+      location += 1;
+    }
+    image_state = 0;
+  }
   Serial.println("END OF TRANSMISSION");
 }

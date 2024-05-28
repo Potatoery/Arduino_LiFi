@@ -9,8 +9,15 @@ Note : Servo controll unit
 */
 
 #include "motor_control.h"
-// #include "AFMotor.h"
 #include <Arduino.h>
+
+#define IN1 8
+#define IN2 9
+#define IN3 10
+#define IN4 11
+
+#define ENA 5
+#define ENB 6
 
 int RightMotor_Enable = 5;
 int LeftMotor_Enable = 6;
@@ -27,77 +34,53 @@ bool car_var = 0;
 // AF_DCMotor M3(3);
 // AF_DCMotor M4(4);
 
-void __init__(bool whichcar){
-  car_var = whichcar;
-  // if(!whichcar){
-    pinMode(RightMotor_Enable, OUTPUT);    
-    pinMode(LeftMotor_Enable, OUTPUT);
-    pinMode(RightMotor_1, OUTPUT);
-    pinMode(RightMotor_2, OUTPUT);
-    pinMode(LeftMotor_1, OUTPUT);
-    pinMode(LeftMotor_2, OUTPUT);
-  // }else{
-  //   M1.setSpeed(LeftMotor_Speed);
-  //   M2.setSpeed(LeftMotor_Speed);
-  //   M3.setSpeed(RightMotor_Speed);
-  //   M4.setSpeed(RightMotor_Speed);
-  //   M1.run(RELEASE);
-  //   M2.run(RELEASE);
-  //   M3.run(RELEASE);
-  //   M4.run(RELEASE);
-  // }
+void __init__(){
+  pinMode(IN1, OUTPUT);
+  pinMode(IN2, OUTPUT);
+  pinMode(IN3, OUTPUT);
+  pinMode(IN4, OUTPUT);
+  pinMode(ENA, OUTPUT);
+  pinMode(ENB, OUTPUT);
+  analogWrite(ENA, 255);
+  analogWrite(ENB, 255);
 }
 
-void motor_init();
-
-bool forward(int duration){
-  // if(!car_var){
-    digitalWrite(RightMotor_1, HIGH);
-    digitalWrite(RightMotor_2, LOW);
-    digitalWrite(LeftMotor_1, HIGH);
-    digitalWrite(LeftMotor_2, LOW);
-    analogWrite(RightMotor_Enable, LeftMotor_Speed);
-    analogWrite(LeftMotor_Enable, RightMotor_Speed);
-  // }else{
-  //   M1.run(FORWARD);
-  //   M2.run(FORWARD);
-  //   M3.run(FORWARD);
-  //   M4.run(FORWARD);
-  // }
+void forward() {
+  Serial.println("Moving forward.");
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, HIGH);
+  digitalWrite(IN4, LOW);
 }
 
-
-bool backward(int duration){
-  // if(!car_var){
-    digitalWrite(RightMotor_1, LOW);
-    digitalWrite(RightMotor_2, HIGH);
-    digitalWrite(LeftMotor_1, LOW);
-    digitalWrite(LeftMotor_2, HIGH);
-    analogWrite(RightMotor_Enable, LeftMotor_Speed);
-    analogWrite(LeftMotor_Enable, RightMotor_Speed);
-  // }else{
-  //   M1.run(BACKWARD);
-  //   M2.run(BACKWARD);
-  //   M3.run(BACKWARD);
-  //   M4.run(BACKWARD);
-  // }  
+void backward() {
+  Serial.println("Moving backward.");
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, HIGH);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, HIGH);
 }
 
-bool rotate(bool LR, int duration){
-  //NOT USING, DEPRECATED FUNCTION
-  digitalWrite(RightMotor_1, LR);
-  digitalWrite(RightMotor_2, !LR);
-  digitalWrite(LeftMotor_1, !LR);
-  digitalWrite(LeftMotor_2, LR);
-  analogWrite(RightMotor_Enable, LeftMotor_Speed);
-  analogWrite(LeftMotor_Enable, RightMotor_Speed);
+void turnLeft() {
+  Serial.println("Turning left.");
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, HIGH);
+  digitalWrite(IN3, HIGH);
+  digitalWrite(IN4, LOW);
 }
 
-bool changeSpeed(int speed){
-  int LeftMotor_Speed = speed;
-  int RightMotor_Speed = speed;
-  // M1.setSpeed(LeftMotor_Speed);
-  // M2.setSpeed(LeftMotor_Speed);
-  // M3.setSpeed(RightMotor_Speed);
-  // M4.setSpeed(RightMotor_Speed);
+void turnRight() {
+  Serial.println("Turning right.");
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, HIGH);
+}
+
+void stop() {
+  Serial.println("Stopping motors.");
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, LOW);
 }
