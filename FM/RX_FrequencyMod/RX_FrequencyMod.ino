@@ -21,13 +21,13 @@ Ideas for Write BMP to SDCARD
 #define STABLE 0
 
 //BER Test Mode
-#define ber_test 0
+#define ber_test 1
 
 //wanna automatic threshold?
 #define auto_threshold 1
 
 //exponential moving average
-#define exponential 0.99
+#define exponential 0.98
 
 //Photodiode
 #define PD A2
@@ -108,9 +108,13 @@ const char ber_string[LEN] = "The Catholic University of Korea";
 char buffer = 0;
 bool control_buffer[24] = {0, };
 String string_buffer = "";
+uint8_t image_buffer[550] = {0, };
 
 void setup() {
-  Serial.begin(2000000); 
+  Serial.begin(2000000);
+  pinMode(3, OUTPUT);
+  digitalWrite(3, 1);
+  __init__(); 
   // if (!SD.begin(10)) {
   //   Serial.println("initialization failed!");
   //   while (1);
@@ -231,15 +235,7 @@ void ret_update(bool temp){
       ret = 0;
       buffer = 0;
       Serial.println("START OF IMAGE TRANSMISSION");
-      for (int i=0; i<10000; i++) {
-        name[6] = (i/1000)%10 + '0';    // thousands place
-        name[7] = (i/100)%10 + '0';     // hundreds
-        name[8] = (i/10)%10 + '0';      // tens
-        name[9] = i%10 + '0';           // ones
-        if (SD.open(name, O_CREAT | O_EXCL | O_WRITE)) {
-          break;
-        }
-      }
+      while (!SD.open(name, O_CREAT | O_EXCL | O_WRITE));
     }else if (uint8_t(buffer) == 143 && (!ber_test)) {
       state = 2;
       ret = 0;
@@ -277,7 +273,7 @@ void ret_update(bool temp){
     bitIndex += 1;
     if(bitIndex == 8){
       if(speed_comm){
-        changeSpeed(int(ret));
+        //changeSpeed(int(ret));
         speed_comm = 0;
         ret = 0;
         bitIndex = 0;
@@ -291,11 +287,11 @@ void ret_update(bool temp){
           ret = 0;
           bitIndex = 0;
         }else if(ret == 10){
-          rotate(0);
+          //rotate(0);
           ret = 0;
           bitIndex = 0;
         }else if(ret == 11){
-          rotate(1);
+          //rotate(1);
           ret = 0;
           bitIndex = 0;
         }else if(ret == 12){
@@ -327,7 +323,8 @@ void ret_update(bool temp){
         bitIndex = 0;
         ret = 0;
       }else{
-        bmpImage.write(&ret, 1);
+        // bmpImage.write(&ret, 1);
+        image_buffer[image_byte_count] = ret;
         bitIndex = 0;
         ret = 0;
       }
@@ -369,7 +366,7 @@ void _exception_comm_ended(){
       ber = 0;
     }
   }else if(state == 3){
-    Serial.println(String(uint8_t(size_divider)) + " " + String(uint8_t(image_index)) + " " + String(image_byte_count));
+    Serial.println(String(uint8_t(size_divider)) + " " + String(uint8_t(location)) + " " + String(uint8_t(image_index)) + " " + String(image_byte_count));
     image_byte_count = 0;
   }
   ret = 0;
