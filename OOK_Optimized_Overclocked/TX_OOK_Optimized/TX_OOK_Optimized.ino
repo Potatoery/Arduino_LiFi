@@ -10,10 +10,10 @@ Description : TX Code for arduino VLC Project
 #include "digitalWriteFast.h"
 
 //LED OUTPUT DECLARE
-#define LED_PIN 10
+#define LED_PIN A5
 
 //CLK LENGTH(ms)
-#define CLK 2
+#define CLK 5
 
 //inputString Length
 //!!!!!!!!!!!!!!!CAUTION!!!!!!!!!!!!!!!!!!
@@ -22,7 +22,7 @@ Description : TX Code for arduino VLC Project
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 //SYNCBYTE before transmission start
-#define SYNCBYTE 10
+#define SYNCBYTE 8
 
 //clk boolean
 bool clk = 0;

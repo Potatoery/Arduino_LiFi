@@ -24,15 +24,15 @@ Note : Frequency Modulation code
 #define send_image 0
 
 //LED OUTPUT DECLARE
-#define LED 10
+#define LED A5
 
 //Frequency Settings
 #if STABLE == 0
-  #define FREQ00 440
-  #define FREQ01 840
-  #define FREQ11 1240
-  #define FREQ10 1640
-  #define FREQ_ABORT 2040
+  #define FREQ00 400
+  #define FREQ01 800
+  #define FREQ11 1200
+  #define FREQ10 1600
+  #define FREQ_ABORT 2000
 #else
   #define FREQ00 1040
   #define FREQ01 1440
@@ -393,7 +393,7 @@ void buffer_text(){
   signal_length = (strlen(inputString) + SYNCBYTE + 1);
 }
 
-void buffer_control(char control_signal, char is_it_speed = 0){
+void buffer_control(uint8_t control_signal, uint8_t is_it_speed){
   if(is_it_speed == 0){
     for (int i = 0; i < 1 + SYNCBYTE + 1; i++) {
       if(i == SYNCBYTE - 1){
@@ -427,7 +427,7 @@ void buffer_control(char control_signal, char is_it_speed = 0){
         }
       }
     }
-  signal_length = (SYNCBYTE + 2);  
+    signal_length = (SYNCBYTE + 2);  
   }else{
     for (int i = 0; i < 2 + SYNCBYTE + 1; i++) {
       if(i == SYNCBYTE - 1){

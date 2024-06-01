@@ -22,10 +22,10 @@ const unsigned char PS_128 = (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);
 // #define LEN 50
 
 //CLK length(ms)
-#define CLK 2
+#define CLK 5
 
 //Threshold(will be replaced with LPF of input)
-#define THRESHOLD 55
+#define THRESHOLD 500
 
 //How many bit to be synced
 #define SYNC_LENGTH 4
@@ -62,7 +62,7 @@ void setup() {
   //SLOW SERIAL COMM CAUSES ERROR
   ADCSRA &= ~PS_128;
   ADCSRA |= PS_16;
-  Serial.begin(921600);
+  Serial.begin(2000000);
   Serial.println("started");
 }
 
@@ -139,5 +139,5 @@ void loop() {
 
 bool get_ldr() {
   int voltage = analogRead(LDR_PIN);
-  return voltage > THRESHOLD ? true : false;
+  return voltage > THRESHOLD ? false : true;
 }

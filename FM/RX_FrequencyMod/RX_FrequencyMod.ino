@@ -115,10 +115,10 @@ void setup() {
   pinMode(3, OUTPUT);
   digitalWrite(3, 1);
   __init__(); 
-  if (!SD.begin(10)) {
-    Serial.println("initialization failed!");
-    while (1);
-  }
+  // if (!SD.begin(10)) {
+  //   Serial.println("initialization failed!");
+  //   while (1);
+  // }
   pinMode(PD, INPUT);
   //ADC 5kHz to ~2MHz
   ADCSRA &= ~PS_128;
@@ -275,28 +275,34 @@ void ret_update(bool temp){
       }else{
         if(ret == 8){
           forward();
+          Serial.println("Remote_control : forward");
           ret = 0;
           bitIndex = 0;
         }else if(ret == 9){
           backward();
+          Serial.println("Remote_control : backward");
           ret = 0;
           bitIndex = 0;
         }else if(ret == 10){
           //rotate(0);
+          Serial.println("Remote_control : rotate");
           ret = 0;
           bitIndex = 0;
         }else if(ret == 11){
           //rotate(1);
+          Serial.println("Remote_control : rotate");
           ret = 0;
           bitIndex = 0;
         }else if(ret == 12){
+          Serial.println("Remote_control : speed");
           state = 2;
           ret = 0;
           bitIndex = 0;
-          speed_comm = 1;
+          // speed_comm = 1;
         } else {
           if(ret == 0xFF){
             ret = 0;
+            bitIndex = 0;
           }else{
             _exception_comm_failed();
           }
@@ -318,7 +324,7 @@ void ret_update(bool temp){
         bitIndex = 0;
         ret = 0;
       }else{
-        bmpImage.write(&ret, 1);
+        //bmpImage.write(&ret, 1);
         image_buffer[image_byte_count] = ret;
         bitIndex = 0;
         ret = 0;
