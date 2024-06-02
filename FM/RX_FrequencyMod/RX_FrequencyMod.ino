@@ -14,14 +14,16 @@ Ideas for Write BMP to SDCARD
 
 #include "motor_control.h"
 #include <SPI.h>
-#include <SD.h>
+//#include <SD.h>
+#include <SdFat.h>
+#include "SdFatUtil.h"
 
 //need DEBUG?
 #define debug 0
 #define STABLE 0
 
 //BER Test Mode
-#define ber_test 1
+#define ber_test 0
 
 //wanna automatic threshold?
 #define auto_threshold 1
@@ -33,7 +35,7 @@ Ideas for Write BMP to SDCARD
 #define PD A2
 
 //Sampling Period
-#define SAMPLING_PERIOD 10 //us
+#define SAMPLING_PERIOD 6 //us
 
 //Frequency Settings
 #if STABLE == 0
@@ -66,10 +68,10 @@ int boundary = 200;
 int threshold = 713;
 
 // Define various ADC prescaler 
-const unsigned char PS_16 = (1 << ADPS2); 
-const unsigned char PS_32 = (1 << ADPS2) | (1 << ADPS0); 
-const unsigned char PS_64 = (1 << ADPS2) | (1 << ADPS1); 
-const unsigned char PS_128 = (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);
+// const unsigned char PS_16 = (1 << ADPS2); 
+// const unsigned char PS_32 = (1 << ADPS2) | (1 << ADPS0); 
+// const unsigned char PS_64 = (1 << ADPS2) | (1 << ADPS1); 
+// const unsigned char PS_128 = (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);
 
 //pulse width calc
 unsigned long current_time;
@@ -94,8 +96,9 @@ uint16_t image_byte_count = 0;
 bool speed_comm = 0;
 
 //for image
-char name[] = "image_0000.bmp";
-File bmpImage;
+char name[] = "image_0000.jpg";
+SdFile bmpImage;
+SdFat sd;
 uint8_t size_divider = 0;
 uint8_t image_index = 0;
 uint8_t location = 1;
@@ -107,7 +110,7 @@ float ber = 0;
 const char ber_string[LEN] = "The Catholic University of Korea";
 char buffer = 0;
 bool control_buffer[24] = {0, };
-uint8_t image_buffer[550] = {0, };
+uint8_t image_buffer[800] = {0, };
 String string_buffer = "";
 
 void setup() {
@@ -115,14 +118,14 @@ void setup() {
   pinMode(3, OUTPUT);
   digitalWrite(3, 1);
   __init__(); 
-  if (!SD.begin(10)) {
-    Serial.println("initialization failed!");
-    while (1);
+  while (!sd.begin(SPI_FULL_SPEED, 10)) {
+    sd.initErrorHalt();
   }
+  sd.remove(name);
   pinMode(PD, INPUT);
   //ADC 5kHz to ~2MHz
-  ADCSRA &= ~PS_128;
-  ADCSRA |= PS_16;
+  // ADCSRA &= ~PS_128;
+  // ADCSRA |= PS_16;
   //For Debuging=========================================
   if(debug && ber_test){
     Serial.println("Debug & BER can't enabled at the same time");
@@ -141,7 +144,7 @@ void loop() {
     //get current_time - last_time
     current_period = get_period();
     //Check Violation
-    if((current_period) > 3000 && state != 0){ Serial.println("result not confident"); }
+    //if((current_period) > 3000 && state != 0){ Serial.println("result not confident"); }
     //update received values
     get_binary();
     //now update last_time to current_time
@@ -230,7 +233,6 @@ void ret_update(bool temp){
       ret = 0;
       buffer = 0;
       Serial.println("START OF IMAGE TRANSMISSION");
-      while (!SD.open(name, O_CREAT | O_EXCL | O_WRITE));
     }else if (uint8_t(buffer) == 143 && (!ber_test)) {
       state = 2;
       ret = 0;
@@ -239,7 +241,7 @@ void ret_update(bool temp){
     }
   } else if(state == 1){
     //TEXT TRANSMISSION
-    ret = ret | temp << 7-bitIndex;
+    ret = ret | temp << bitIndex;
     bitIndex += 1;
     if(bitIndex == 8){
       if((ret < 31) | (ret > 127)){
@@ -264,7 +266,7 @@ void ret_update(bool temp){
       }
     }
   }else if (state == 2){
-    ret = ret | temp << 7-bitIndex;
+    ret = ret | temp << bitIndex;
     bitIndex += 1;
     if(bitIndex == 8){
       if(speed_comm){
@@ -304,7 +306,7 @@ void ret_update(bool temp){
       }
     }
   }else if (state == 3){
-    ret = ret | temp << 7-bitIndex;
+    ret = ret | temp << bitIndex;
     bitIndex += 1;
     if(bitIndex == 8){
       if(image_state == 0){
@@ -318,12 +320,17 @@ void ret_update(bool temp){
         bitIndex = 0;
         ret = 0;
       }else{
-        bmpImage.write(&ret, 1);
-        image_buffer[image_byte_count] = ret;
+        if(image_index == 1 && location == 1 && !bool(bmpImage)){
+          bmpImage.open(name, O_CREAT | O_EXCL | O_WRITE);
+          Serial.println("Start Writing");
+        }
+        if(bmpImage){
+          image_buffer[image_byte_count] = ret;
+          image_byte_count++;
+        }
         bitIndex = 0;
         ret = 0;
       }
-      image_byte_count++;
     }
   }
 }
@@ -354,29 +361,43 @@ void _exception_comm_failed(){
 
 void _exception_comm_ended(){
   if(state == 1){
-    Serial.print(String(voltage) + " " + String(current_period) + " || " + String(state) + " " + "RECEIVING BITS || " + String(string_buffer) + "\n");
+    Serial.print("RECEIVING BITS || " + String(string_buffer) + "\n");
     if(ber_test){ 
       Serial.println("BER was " + String((1.0 - ber/strlen(ber_string))));
       ber_count = 0; 
       ber = 0;
     }
   }else if(state == 3){
-    Serial.println(String(uint8_t(size_divider)) + " " + String(uint8_t(location)) + " " + String(uint8_t(image_index)) + " " + String(image_byte_count));
-    image_byte_count = 0;
+    Serial.println(String(uint8_t(size_divider)) + " " + String(uint8_t(image_index)) + " " + String(uint8_t(location)) + " " + String(image_byte_count));
   }
   ret = 0;
   state = 0;
   bitIndex = 0;
   string_buffer = "";
   if(image_state == 2){
-    if(size_divider == (location)){
+    if((size_divider < location + 1) && (size_divider == image_index)){
+      bmpImage.write(image_buffer, image_byte_count);
       bmpImage.close();
       size_divider = 0;
+      location = 0;
+      Serial.println("Check SD Card");
+      while(1);
+    }else if (location != image_index){
+      Serial.println("removed");
+      bmpImage.close();
+      sd.remove(name);
       location = 1;
     }else{
+      if(!bmpImage){
+        bmpImage.open(name, O_CREAT | O_EXCL | O_WRITE);
+        Serial.println("Opened");
+      }
+      bmpImage.write(image_buffer, image_byte_count);
+      bmpImage.sync();
       location += 1;
     }
     image_state = 0;
   }
+  image_byte_count = 0;
   Serial.println("END OF TRANSMISSION");
 }
