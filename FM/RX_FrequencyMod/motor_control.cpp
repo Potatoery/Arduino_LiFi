@@ -11,13 +11,13 @@ Note : Servo controll unit
 #include "motor_control.h"
 #include <Arduino.h>
 
-#define IN1 8
-#define IN2 9
-#define IN3 10
-#define IN4 11
+#define IN1 4
+#define IN2 6
+#define IN3 7
+#define IN4 8
 
-#define ENA 5
-#define ENB 6
+#define ENA 3
+#define ENB 5
 
 int RightMotor_Enable = 5;
 int LeftMotor_Enable = 6;

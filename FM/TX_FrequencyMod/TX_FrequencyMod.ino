@@ -16,15 +16,19 @@ Note : Frequency Modulation code
 //NEED DEBUG?
 #define debug 0
 #define STABLE 0
-
-//BER Test Mode
 #define ber_test 0
-
-//Is it image?
 #define send_image 1
+#define LED A5
+#define mm_block_size 128
+#define mm_buffer_size 128
 
-//LED OUTPUT DECLARE
-#define LED 10
+//SYNCBYTE before transmission start
+//Minimum 1
+//Suggesting 2 ( SOT should be included, Buffer should be flushed at RX )
+#define SYNCBYTE 2 //bytes
+
+//Duration of certain Frequency
+#define DURATION 1 //CYCLE
 
 //Frequency Settings
 #if STABLE == 0
@@ -41,24 +45,10 @@ Note : Frequency Modulation code
   #define FREQ_ABORT 2640
 #endif
 
-//SYNCBYTE before transmission start
-//Minimum 1
-//Suggesting 2 ( SOT should be included, Buffer should be flushed at RX )
-#define SYNCBYTE 2 //bytes
-
-//Duration of certain Frequency
-#define DURATION 1 //CYCLE
-
-//inputString Length
-//!!!!!!!!!!!!!!!CAUTION!!!!!!!!!!!!!!!!!!
-//IT CONSUMES HUGE MEMORY SPACE
-#define LEN 550
-//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
 //inputString Setup
-const char inputString[LEN] = "A veryyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy long Message";
-const char ber_string[LEN] = "The Catholic University of Korea";
-const char image[] PROGMEM = 
+const char inputString[] = "A veryyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy long Message";
+const char ber_string[] = "The Catholic University of Korea";
+const uint8_t image[] PROGMEM = 
 { 0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00, 0x00, 0x01, 
 0x00, 0x01, 0x00, 0x00, 0xFF, 0xDB, 0x00, 0x43, 0x00, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 
 0x06, 0x06, 0x05, 0x08, 0x08, 0x07, 0x08, 0x08, 0x0B, 0x0A, 0x09, 0x09, 0x0A, 0x0B, 0x11, 0x0C, 
@@ -713,9 +703,8 @@ char temp;
 
 //128BYTE BOOLEAN-ARRAY to store binary text data
 // bool string_Signal[1024] = {0, }; 
-uint8_t string_Signal[550] = {0, };
+uint8_t string_Signal[mm_buffer_size] = {0, };
 uint16_t signal_length = 0;
-char ber_test_signal = 0x1E;
 uint16_t block_size = 0;
 
 //for sending loop
@@ -724,8 +713,6 @@ uint8_t bitIndex = 0;
 bool toggle = 0;
 bool image_state = 0;
 uint16_t image_index = 0;
-uint16_t realtime_comm_delay = FREQ11 * 4;
-byte Grayscale;
 // File bmpImage;
 
 //for image
@@ -741,42 +728,15 @@ const unsigned char PS_128 = (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);
 
 //symbol of start of transmission
 //NOT USING FOR NOW
-bool _symbol_SOT[8] = {1, 0, 0, 0, 0, 1, 1, 0}; // 6
-
-bool _symbol_SOT_Control[8] = {1, 0, 0, 0, 1, 1, 1, 1}; // 5
-
-// bool _symbol_Control_Forward[8]; // 8
-
-// bool _symbol_Control_Backward[8]; // 9
-
-// bool _symbol_Control_Rotate_Left[8]; // 10
-
-// bool _symbol_Control_Rotate_Right[8]; // 11
-
-bool _symbol_Control_ChangeSpeed[8]; // 12
-
-bool _symbol_SOT_Image[8] = {1, 0, 0, 0, 0, 1, 1, 1}; //7
-
-bool _symbol_EOL_Image[8] = {0, 0, 0, 0, 1, 0, 0, 0}; //8
-
-//symbol of end of transmission
-bool _symbol_EOT[8] = {0, 0, 0, 0, 0, 1, 0, 0}; // 4
-
-//FOR BENCHMARKING=============================
-// unsigned long _time_started;
-// unsigned long _time_ended;
-// char buffer[100];
-//FOR BENCHMARKING=============================
+bool _symbol_SOT[8] = {1, 0, 0, 0, 0, 1, 1, 0};
+bool _symbol_SOT_Control[8] = {1, 0, 0, 0, 1, 1, 1, 1};
+bool _symbol_Control_ChangeSpeed[8];
+bool _symbol_SOT_Image[8] = {1, 0, 0, 0, 0, 1, 1, 1};
+bool _symbol_EOL_Image[8] = {0, 0, 0, 0, 1, 0, 0, 0};
+bool _symbol_EOT[8] = {0, 0, 0, 0, 0, 1, 0, 0};
 
 void setup() {
   pinModeFast(LED, OUTPUT);
-  // if (!SD.begin(10)) {
-  //   Serial.println("initialization failed!");
-  //   while (1);
-  // }
-  // File bmpImage = SD.open("picture.bmp",FILE_READ);
-  // size = bmpImage.size();
-  //For Debuging=========================================
   if(debug || ber_test){
     Serial.begin(2000000);
     Serial.print("start TRANSMISSION \n");
@@ -800,10 +760,6 @@ void setup() {
 }
 
 void loop() {
-  // if(stringIndex == -1){
-  //   _exception_comm_started();
-  //   stringIndex += 1;
-  // }
   if(bitRead(string_Signal[stringIndex], bitIndex)){
     if(bitRead(string_Signal[stringIndex], bitIndex + 1)){
       write_11();
@@ -832,17 +788,6 @@ void loop() {
         Serial.println("512 Byte sent " + String(image_index) + " " + String(size_divider));
       }
       stringIndex = 0;
-      //FOR BENCHMARKING===========================
-      // _time_ended = millis();
-      // Serial.print("\n");
-      // Serial.print((strlen(inputString) + SYNCBYTE + 1) * 8);
-      // Serial.print("\n");
-      // Serial.print(String((_time_ended) - (_time_started)));
-      //FOR BENCHMARKING===========================
-      // delay(1);
-      //FOR BENCHMARKING===========================
-      // _time_started = millis();
-      //FOR BENCHMARKING===========================
   }
 }
 
@@ -1088,16 +1033,16 @@ void buffer_image(){
   }
 
   // bmpImage.seek( );
-  if(size > 512){
-    size_divider = size / 512 + 1;
-    size_divider_n = size % 512;
+  if(size > mm_block_size){
+    size_divider = size / mm_block_size + 1;
+    size_divider_n = size % mm_block_size;
   }
   
   if(size_divider == image_index+1){
     block_size = size_divider_n;
     image_state = 0;
   }else{
-    block_size = 512;
+    block_size = mm_block_size;
   }
 
   for (uint16_t i = 0; i < block_size + SYNCBYTE + 3; i++) {
@@ -1129,7 +1074,7 @@ void buffer_image(){
       for (int j = 0; j < 8; j++) {
           bitClear(string_Signal[i], 7-j);
       }
-    } else if(i == (512 + SYNCBYTE + 2)){
+    } else if(i == (mm_block_size + SYNCBYTE + 2)){
       for (int j = 0; j < 8; j++) {
         if(_symbol_EOT[7 - j]){
           bitSet(string_Signal[i], 7-j);
@@ -1139,7 +1084,7 @@ void buffer_image(){
       }
     } else {
       for (int j = 0; j < 8; j++) {
-        temp = pgm_read_byte_near(image + (image_index * 512) + (i - SYNCBYTE - 2));
+        temp = pgm_read_byte_near(image + (image_index * mm_block_size) + (i - SYNCBYTE - 2));
         if(bitRead(temp, j)){
           bitSet(string_Signal[i], 7-j);
         }else{
